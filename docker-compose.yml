@@ -1,0 +1,34 @@
+services:
+  app:
+    image: ${DOCKER_IMAGE:-secret-garden-site}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: secret-garden-site
+    restart: unless-stopped
+    working_dir: /var/www
+    ports:
+      - "8089:80"
+    environment:
+      - DB_HOST=db
+      - DB_NAME=secret_garden
+      - DB_USER=fuelrod
+      - DB_PASSWORD=fuelrod
+      - ENABLE_PRETTY_URLS=false
+    depends_on:
+      - db
+
+  db:
+    image: postgres:17
+    container_name: secret-garden-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=secret_garden
+      - POSTGRES_USER=fuelrod
+      - POSTGRES_PASSWORD=fuelrod
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./system/service/database/initdb:/docker-entrypoint-initdb.d
+
+volumes:
+  db_data:

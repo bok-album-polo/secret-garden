@@ -1,0 +1,7 @@
+/.vscode
+/.idea
+/*.sublime-project
+/*.sublime-workspace
+/*.code-workspace
+!.gitkeep
+config.php

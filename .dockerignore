@@ -1,0 +1,13 @@
+.git
+.env
+Dockerfile
+docker-compose.yml
+README.md
+.dockerignore
+.gitignore
+.idea
+.vscode
+*.md
+tests/
+phpunit.xml
+!source/config/config.php
