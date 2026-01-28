@@ -7,7 +7,7 @@ use App\Core\Database;
 use InvalidArgumentException;
 use PDO;
 
-class ContactController extends Controller
+class SecretDoorController extends Controller
 {
     public function index(): void
     {

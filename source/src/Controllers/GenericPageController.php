@@ -5,7 +5,7 @@ namespace App\Controllers;
 use App\Core\Controller;
 use App\Core\Session;
 
-class PageController extends Controller
+class GenericPageController extends Controller
 {
     public function show(string $route): void
     {

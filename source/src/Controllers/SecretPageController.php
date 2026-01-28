@@ -4,32 +4,22 @@ namespace App\Controllers;
 
 use App\Core\Controller;
 use App\Core\Database;
+use App\Core\Session;
+use App\Models\UserNamePool;
 use PDO;
 
-class RegistrationController extends Controller
+class SecretPageController extends Controller
 {
     public function index(): void
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $this->handleRegistration();
-            $target = ENABLE_PRETTY_URLS ? '/registration-summary' : '?page=registration-summary';
-            $this->redirect($target);
+            exit;
         }
 
+        $userData = UserNamePool::getDispatchedUser();
+        $_SESSION['dispatched_user'] = $userData ;
         $this->render('pages/registration');
-    }
-
-    public function registrationSummary(): void
-    {
-        // Retrieve summary from session
-        $summary = $_SESSION['registration_summary'] ?? [];
-
-        // Clear it immediately after retrieval (one-time use)
-        unset($_SESSION['registration_summary']);
-
-
-        // Display the success page with summary data
-        $this->render('pages/registration-summary', $summary);
     }
 
     private function handleRegistration(): void
@@ -107,16 +97,16 @@ class RegistrationController extends Controller
         }
 
         // ----------------------------
-        // Save summary to session for redirect
+        // show summary page
         // ----------------------------
-        $_SESSION['registration_summary'] = [
+        $this->render('pages/registration-summary', [
             'username' => $username,
             'email' => $email,
             'authenticated' => $authStatus,
             'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
             'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? '',
             'generated_password' => $generatedPassword
-        ];
+        ]);
     }
 
     /**
