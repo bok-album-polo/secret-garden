@@ -15,7 +15,7 @@ class Controller
 
         if (file_exists($viewFile)) {
             // Use layout wrapper
-            require __DIR__ . "/../Views/layout/layout.php";
+            require __DIR__ . "/../Views/layout/template.php";
         } else {
             $this->redirect('/');
         }
