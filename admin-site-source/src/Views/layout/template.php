@@ -13,14 +13,13 @@ $userRoles = $_SESSION['roles'] ?? [Role::USER];
 <head>
     <meta charset="utf-8">
     <title><?= htmlspecialchars($pageTitle) ?></title>
-    <link rel="stylesheet" href="../../../assets/css/bootstrap.min.css">
-    <link rel="stylesheet" href="../../../assets/css/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="../../../assets/css/app.css">
+    <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/assets/css/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="/assets/css/app.css">
 </head>
 <body>
 
 <nav>
-    <a href="index.php">Secret Garden Admin</a>
     <?php if (Role::hasPermission($userRoles, Role::ADMIN)): ?>
         <a href="index.php?route=dashboard">Registrations</a>
         <a href="index.php?route=user_management">User Management</a>
@@ -42,7 +41,7 @@ $userRoles = $_SESSION['roles'] ?? [Role::USER];
 <footer>
     <p>&copy; <?= date('Y') ?> Secret Garden Admin</p>
 </footer>
-<script src="../../../assets/js/date-formatter.js" defer></script>
-<script src="../../../assets/js/bootstrap.bundle.min.js"></script>
+<script src="/assets/js/date-formatter.js" defer></script>
+<script src="/assets/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
