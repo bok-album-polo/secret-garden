@@ -1,4 +1,5 @@
 <?php
+
 use App\Core\Role;
 
 if (!isset($pageTitle)) {
@@ -12,6 +13,9 @@ $userRoles = $_SESSION['roles'] ?? [Role::USER];
 <head>
     <meta charset="utf-8">
     <title><?= htmlspecialchars($pageTitle) ?></title>
+    <link rel="stylesheet" href="../../../assets/css/bootstrap.min.css">
+    <link rel="stylesheet" href="../../../assets/css/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="../../../assets/css/app.css">
 </head>
 <body>
 
@@ -20,8 +24,8 @@ $userRoles = $_SESSION['roles'] ?? [Role::USER];
     <?php if (Role::hasPermission($userRoles, Role::ADMIN)): ?>
         <a href="index.php?route=dashboard">Registrations</a>
         <a href="index.php?route=user_management">User Management</a>
-    <?php endif;?>
-    
+    <?php endif; ?>
+
     <?php if (isset($_SESSION['username'])): ?>
         <span>
             <?= htmlspecialchars($_SESSION['username']) ?> 
@@ -38,6 +42,7 @@ $userRoles = $_SESSION['roles'] ?? [Role::USER];
 <footer>
     <p>&copy; <?= date('Y') ?> Secret Garden Admin</p>
 </footer>
-
+<script src="../../../assets/js/date-formatter.js" defer></script>
+<script src="../../../assets/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
