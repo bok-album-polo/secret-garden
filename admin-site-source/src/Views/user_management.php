@@ -1,5 +1,4 @@
-<?php require __DIR__ . '/layout/header.php';
-
+<?php
 use App\Core\Role;
 
 ?>
@@ -159,4 +158,3 @@ use App\Core\Role;
     }
 </script>
 
-<?php require __DIR__ . '/layout/footer.php'; ?>

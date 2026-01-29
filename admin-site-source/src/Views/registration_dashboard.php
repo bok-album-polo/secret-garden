@@ -1,5 +1,4 @@
-<?php require __DIR__ . '/layout/header.php';
-
+<?php
 use App\Core\Role;
 
 /**
@@ -163,4 +162,3 @@ $userRoles = $_SESSION['roles'] ?? [Role::USER];
         <?php endif; ?>
     </div>
 
-<?php require __DIR__ . '/layout/footer.php'; ?>

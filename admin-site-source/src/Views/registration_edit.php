@@ -2,8 +2,6 @@
 
 use App\Core\Role;
 
-require __DIR__ . '/layout/header.php';
-
 $userRoles = $_SESSION['roles'] ?? [Role::USER];
 
 
@@ -47,4 +45,3 @@ if (!Role::hasPermission($userRoles, Role::ADMIN)) {
     </div>
 </div>
 
-<?php require __DIR__ . '/layout/footer.php'; ?>

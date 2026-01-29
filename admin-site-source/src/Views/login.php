@@ -1,4 +1,3 @@
-<?php require __DIR__ . '/layout/header.php'; ?>
 
 <div class="container vh-100 d-flex justify-content-center align-items-center">
     <div class="card p-4 shadow" style="width: 400px">
@@ -25,4 +24,3 @@
     </div>
 </div>
 
-<?php require __DIR__ . '/layout/footer.php'; ?>
