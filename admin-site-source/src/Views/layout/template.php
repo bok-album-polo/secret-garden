@@ -35,7 +35,8 @@ $userRoles = $_SESSION['roles'] ?? [Role::USER];
 </nav>
 
 <main>
-    <?php require $viewFile; ?>
+    <?php /** @var string $viewFile */
+    require $viewFile; ?>
 </main>
 
 <footer>
