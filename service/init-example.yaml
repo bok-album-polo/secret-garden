@@ -1,0 +1,184 @@
+# Global Project Settings
+project_meta:
+  version: "1.0.0"
+  environment: "production" # Options: production, development
+  num_public_sites: 2 
+  num_unique_pk_sequences: 20
+  mode: "readwrite" # Options: readonly, readwrite
+
+# Shared Database Infrastructure (PostgreSQL)
+database_server:
+  host: "127.0.0.1"
+  port: 5432
+  db_name: "central_management_db"
+
+# Core Application Logic Constants
+application_config:
+  pk_length: 5
+  pk_max_history: 20 # Note: Must be >= pk_length
+  generated_password_length: 8
+  generated_password_charset: "0123456789"
+
+# DO NOT EDIT secret_door_fields here. Make changes under each public_site if required.
+secret_door_fields:
+  - name: "name"
+    label: "Name"
+    html_type: "text"
+    help_text: "e.g. John Doe"
+    maxlength: 255
+    pg_type: "VARCHAR"
+    required: true
+  - name: "email"
+    label: "Email"
+    html_type: "email"
+    help_text: "name@company.com"
+    maxlength: 255
+    pg_type: "VARCHAR"
+    required: true
+  - name: "message"
+    label: "Message"
+    html_type: "textarea"
+    help_text: ""
+    maxlength: 1000
+    pg_type: "VARCHAR"
+    required: false
+  - name: "file"
+    label: "Upload File"
+    html_type: "file"
+    help_text: "Upload File"
+    pg_type: "JSONB"
+    required: false
+
+# global secret_page_fields
+secret_page_fields:
+  - name: "primary_email"
+    label: "Registration Email"
+    html_type: "email"
+    help_text: "you@example.com"
+    maxlength: 255
+    pg_type: "VARCHAR"
+    required: true
+
+# Central Administrative Portal
+admin_site:
+  domain: "example0.com"
+  db_credentials:
+    user: "super_admin"
+    pass: "password"
+
+# Per-Domain Configuration
+public_sites:
+  - domain: "example1.com"
+    db_credentials:
+      user: "example1.com"
+      pass: "password" 
+    routing_secrets:
+        secret_door: "contact"   
+        secret_page: "registration" 
+    pages_menu: #first page is always home
+        - home
+        - about-us
+        - garden-design
+        - maintenance
+        - tools
+        - contact
+
+  - domain: "example2.com"
+    db_credentials:
+      user: "example2.com"
+      pass: "password"
+    routing_secrets: # URL Routing Slugs
+        secret_door: "contact"   
+        secret_page: "registration" 
+    pages_menu: #first page is always home
+        - home
+        - ursa-major
+        - orion
+        - cassiopeia
+        - leo
+        - scorpius
+        - cygnus
+        - taurus
+        - lyra
+        - contact
+    secret_door_fields:
+      - name: "name"
+        label: "Contact Person"
+        help_text: "Please provide the name of the project lead."
+      - name: "email"
+        label: "Business Email"
+        help_text: "Use your @company address."
+      - name: "message"
+        label: "Inquiry Details"
+        help_text: "Briefly describe your requirements (max 1000 chars)."
+
+###############################################################################
+# FIELD_TYPE_EXAMPLES (Appendix for reference only)
+###############################################################################
+# - name: "official_site"
+#   label: "Website URL"
+#   html_type: "url"
+#   help_text: "https://your-domain.com"
+#   maxlength: 2048
+#   pg_type: "TEXT"
+#   required: false
+#
+# - name: "phone_number"
+#   label: "Phone Number"
+#   html_type: "tel"
+#   help_text: "+1 (555) 000-0000"
+#   maxlength: 20
+#   pg_type: "VARCHAR"
+#   required: false
+#
+# - name: "age_verification"
+#   label: "Your Age"
+#   html_type: "number"
+#   help_text: "Must be 18 or older"
+#   pg_type: "SMALLINT"
+#   required: false
+#
+# - name: "birth_date"
+#   label: "Date of Birth"
+#   html_type: "date"
+#   help_text: "YYYY-MM-DD"
+#   pg_type: "DATE"
+#   required: false
+#
+# - name: "ui_theme_color"
+#   label: "Theme Color"
+#   html_type: "color"
+#   help_text: "Choose a hex color (e.g. #000000)"
+#   maxlength: 7
+#   pg_type: "CHAR"
+#   required: false
+#
+# - name: "trust_score"
+#   label: "Account Trust"
+#   html_type: "range"
+#   help_text: "Select a value between 0 and 1"
+#   pg_type: "NUMERIC(5,2)"
+#   required: false
+#
+# - name: "newsletter_opt_in"
+#   label: "Subscribe to News"
+#   html_type: "checkbox"
+#   help_text: "Check to receive updates"
+#   pg_type: "BOOLEAN"
+#   required: false
+#
+# - name: "identity_document"
+#   label: "Identity Document"
+#   html_type: "file"
+#   help_text: "Upload ID scan (PDF/JPG)"
+#   pg_type: "JSONB"
+#   required: false
+#
+# - name: "subscription_tier"
+#   label: "Select Tier"
+#   html_type: "radio"
+#   help_text: "Choose your plan"
+#   options: ["basic", "pro", "enterprise"]
+#   pg_type: "VARCHAR"
+#   maxlength: 20
+#   required: false
