@@ -252,6 +252,31 @@ def validate_cross_references(config: Dict[str, Any]) -> tuple[bool, Optional[st
     return True, None
 
 
+def compute_discovery_probabilities(num_pages_menu: int,
+                                    num_sequences_per_site: int,
+                                    pk_length: int,
+                                    sliding_window: int) -> tuple[float, float, list]:
+    """Compute discovery probabilities for a site.
+
+    Returns a tuple of (P_session_total, P_single, steps)
+    where `steps` is a list of (step, P_survival, P_step).
+    """
+    # Guard against invalid menu sizes
+    if num_pages_menu <= 1:
+        return 0.0, 0.0, []
+
+    p_single = num_sequences_per_site / ((num_pages_menu - 1) ** pk_length)
+    p_session = 0.0
+    steps = []
+    for step in range(1, sliding_window + 1):
+        p_survival = ((num_pages_menu - 2) / (num_pages_menu - 1)) ** (step + pk_length - 1)
+        p_step = p_single * p_survival
+        steps.append((step, p_survival, p_step))
+        p_session += p_step
+
+    return p_session, p_single, steps
+
+
 def main():
     """Main entry point."""
     # Parse command line arguments
@@ -303,32 +328,14 @@ def main():
             domain = site.get("domain", "unknown")
             num_pages_menu = len(site.get("pages_menu", []))
             
-            # P_single = num_sequences_per_site/((num_pages_menu-1)^pk_length)
-            p_single = num_sequences_per_site / ((num_pages_menu - 1) ** pk_length)
-            
-            # P_session = P_single * sliding_window
-            p_session = p_single * sliding_window
-            
-            # P_survival_single_step = 1 - (1/((num_pages_menu-1)^pk_length))
-            # Probability of NOT hitting a single blacklisted file at one step
-            p_hit_blacklist_single = 1 / ((num_pages_menu - 1) ** pk_length)
-            p_survival_single_step = 1 - p_hit_blacklist_single
-            
-            # P_survival_window = (1 - 1/((num_pages_menu-1)^pk_length))^sliding_window
-            # Probability of surviving all steps in the sliding window without hitting blacklist
-            p_survival_window = p_survival_single_step ** sliding_window
-            
+            p_session, p_single, steps = compute_discovery_probabilities(
+                num_pages_menu, num_sequences_per_site, pk_length, sliding_window)
+
             print(f"  {domain}:")
             print(f"    num_pages={num_pages_menu}, num_sequences_per_site={num_sequences_per_site}")
             print(f"    P_single={num_sequences_per_site}/(({num_pages_menu}-1)^{pk_length})={p_single}")
-            print(f"    P_session={p_single}*{sliding_window}={p_session}")
-            print(f"    P_survival_single_step=1-(1/(({num_pages_menu}-1)^{pk_length}))={p_survival_single_step}")
-            print(f"    P_survival_window=(1-(1/(({num_pages_menu}-1)^{pk_length})))^{sliding_window}={p_survival_window}")
-                    print(f"    P_session at each step (P_single * P_survival):")
-                    for step in range(1, sliding_window + 1):
-                        p_survival_at_step = p_survival_single_step ** (step - 1)
-                        p_session_at_step = p_single * p_survival_at_step
-                        print(f"      Step {step}: P_session={p_single}*{p_survival_at_step:.6f}={p_session_at_step:.6f}")
+            print(f"    sliding_window={sliding_window}")
+            print(f"    P_session={p_session:.8f}")
         
         return 0
         
