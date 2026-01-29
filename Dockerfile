@@ -30,7 +30,7 @@ COPY --from=builder /usr/local/etc/php/conf.d /usr/local/etc/php/conf.d
 WORKDIR /var/www
 
 # Copy application code
-COPY collection-site-source/. /var/www
+COPY public-site-source/. /var/www
 
 # Ensure config.php is present (fallback to example if missing)
 RUN if [ ! -f /var/www/config/config.php ]; then cp /var/www/config/config-example.php /var/www/config/config.php; fi
