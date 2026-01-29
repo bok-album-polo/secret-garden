@@ -309,10 +309,26 @@ def main():
             # P_session = P_single * sliding_window
             p_session = p_single * sliding_window
             
+            # P_survival_single_step = 1 - (1/((num_pages_menu-1)^pk_length))
+            # Probability of NOT hitting a single blacklisted file at one step
+            p_hit_blacklist_single = 1 / ((num_pages_menu - 1) ** pk_length)
+            p_survival_single_step = 1 - p_hit_blacklist_single
+            
+            # P_survival_window = (1 - 1/((num_pages_menu-1)^pk_length))^sliding_window
+            # Probability of surviving all steps in the sliding window without hitting blacklist
+            p_survival_window = p_survival_single_step ** sliding_window
+            
             print(f"  {domain}:")
             print(f"    num_pages={num_pages_menu}, num_sequences_per_site={num_sequences_per_site}")
             print(f"    P_single={num_sequences_per_site}/(({num_pages_menu}-1)^{pk_length})={p_single}")
             print(f"    P_session={p_single}*{sliding_window}={p_session}")
+            print(f"    P_survival_single_step=1-(1/(({num_pages_menu}-1)^{pk_length}))={p_survival_single_step}")
+            print(f"    P_survival_window=(1-(1/(({num_pages_menu}-1)^{pk_length})))^{sliding_window}={p_survival_window}")
+                    print(f"    P_session at each step (P_single * P_survival):")
+                    for step in range(1, sliding_window + 1):
+                        p_survival_at_step = p_survival_single_step ** (step - 1)
+                        p_session_at_step = p_single * p_survival_at_step
+                        print(f"      Step {step}: P_session={p_single}*{p_survival_at_step:.6f}={p_session_at_step:.6f}")
         
         return 0
         
