@@ -10,7 +10,7 @@ class Controller
         
         $viewFile = __DIR__ . "/../Views/{$view}.php";
         if (file_exists($viewFile)) {
-            require $viewFile;
+            require __DIR__ . "/../Views/layout/template.php";
         } else {
             die("View {$view} not found.");
         }
