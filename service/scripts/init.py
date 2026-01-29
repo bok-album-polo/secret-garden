@@ -113,6 +113,7 @@ CONFIG_SCHEMA = {
                         "items": {"type": "string"},
                         "minItems": 1
                     },
+                    "num_tripwire_pages": {"type": "integer", "minimum": 0},
                     "secret_door_fields": {
                         "type": "array",
                         "items": {"$ref": "#/definitions/domain_field"}
@@ -246,6 +247,22 @@ def validate_cross_references(config: Dict[str, Any]) -> tuple[bool, Optional[st
         if domain in seen:
             errors.append(f"Duplicate domain found: {domain}")
         seen.add(domain)
+
+    # Validate num_tripwire_pages per public site: must be < (pages_menu count - 2)
+    for site in config.get("public_sites", []):
+        domain = site.get("domain", "unknown")
+        pages_menu_len = len(site.get("pages_menu", []))
+        num_tripwire = site.get("num_tripwire_pages")
+        if num_tripwire is None:
+            continue
+        if not isinstance(num_tripwire, int):
+            errors.append(f"{domain}: num_tripwire_pages must be an integer")
+            continue
+        threshold = pages_menu_len - 2
+        if num_tripwire >= threshold:
+            errors.append(
+                f"{domain}: num_tripwire_pages ({num_tripwire}) must be < (pages_menu count - 2) ({threshold})"
+            )
     
     if errors:
         return False, "\n".join(errors)
@@ -255,7 +272,8 @@ def validate_cross_references(config: Dict[str, Any]) -> tuple[bool, Optional[st
 def compute_discovery_probabilities(num_pages_menu: int,
                                     num_sequences_per_site: int,
                                     pk_length: int,
-                                    sliding_window: int) -> tuple[float, float, list]:
+                                    sliding_window: int,
+                                    num_tripwire_pages: int = 0) -> tuple[float, float, list]:
     """Compute discovery probabilities for a site.
 
     Returns a tuple of (P_session_total, P_single, steps)
@@ -269,7 +287,14 @@ def compute_discovery_probabilities(num_pages_menu: int,
     p_session = 0.0
     steps = []
     for step in range(1, sliding_window + 1):
-        p_survival = ((num_pages_menu - 2) / (num_pages_menu - 1)) ** (step + pk_length - 1)
+        # base survival probability per step (pages that are not tripwires)
+        denom = (num_pages_menu - 1)
+        base_numer = (num_pages_menu - 1 - (num_tripwire_pages or 0))
+        base = base_numer / denom if denom > 0 else 0
+        if base <= 0:
+            p_survival = 0.0
+        else:
+            p_survival = base ** (step + pk_length - 1)
         p_step = p_single * p_survival
         steps.append((step, p_survival, p_step))
         p_session += p_step
@@ -328,11 +353,12 @@ def main():
             domain = site.get("domain", "unknown")
             num_pages_menu = len(site.get("pages_menu", []))
             
+            num_tripwire = site.get("num_tripwire_pages", 0)
             p_session, p_single, steps = compute_discovery_probabilities(
-                num_pages_menu, num_sequences_per_site, pk_length, sliding_window)
+                num_pages_menu, num_sequences_per_site, pk_length, sliding_window, num_tripwire)
 
             print(f"  {domain}:")
-            print(f"    num_pages={num_pages_menu}, num_sequences_per_site={num_sequences_per_site}")
+            print(f"    num_pages={num_pages_menu}, num_sequences_per_site={num_sequences_per_site}, num_tripwire={num_tripwire}")
             print(f"    P_single={num_sequences_per_site}/(({num_pages_menu}-1)^{pk_length})={p_single}")
             print(f"    sliding_window={sliding_window}")
             print(f"    P_session={p_session:.8f}")
