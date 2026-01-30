@@ -255,6 +255,25 @@ def validate_cross_references(config: Dict[str, Any]) -> tuple[bool, Optional[st
     # Validate num_tripwire_pages per public site: must be < (pages_menu count - 2)
     for site in config.get("public_sites", []):
         domain = site.get("domain", "unknown")
+
+        pages_menu = site.get("pages_menu", [])
+        routing = site.get("routing_secrets", {})
+        secret_door = routing.get("secret_door")
+        secret_page = routing.get("secret_page")
+
+        # 1. Secret Door MUST be in the menu (it is the visible entry point)
+        if secret_door not in pages_menu:
+            errors.append(
+                f"{domain}: secret_door '{secret_door}' is NOT in pages_menu. "
+                "The entry point must be an existing page."
+            )
+
+        # 2. Secret Page MUST NOT be in the menu (it must remain hidden)
+        if secret_page in pages_menu:
+            errors.append(
+                f"{domain}: secret_page '{secret_page}' IS in pages_menu. "
+                "Security Risk: The registration/hidden page should not be linked in the public menu."
+            )
         pages_menu_len = len(site.get("pages_menu", []))
         num_tripwire = site.get("num_tripwire_pages")
         if num_tripwire is None:
@@ -408,6 +427,7 @@ def generate_public_config_php(config: Dict[str, Any]) -> None:
         domain = site.get("domain", f"site{idx}")
         safe = re.sub(r'[^A-Za-z0-9._-]+', '-', domain).strip('-').lower()
         site_dir = build_dir / f"{idx:02d}-{safe}"
+
         if not site_dir.exists():
             print(f"Warning: generated site directory not found for {domain}: {site_dir}")
             continue
