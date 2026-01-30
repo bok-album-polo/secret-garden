@@ -12,6 +12,7 @@ Usage:
     filename: The YAML file to validate (default: service/init.yaml)
 """
 
+import csv
 import random
 import sys
 import os
@@ -476,6 +477,7 @@ def generate_public_config_php(config: Dict[str, Any]) -> None:
             sysrand = random.SystemRandom()
             tripwire = sysrand.sample(candidates, count)
 
+        site['tripwire_pages'] = tripwire
         payload['tripwire_pages'] = tripwire
 
         # Merge root-level secret_door_fields into the site's secret_door_fields.
@@ -595,7 +597,99 @@ def generate_admin_config_php(config: Dict[str, Any]) -> None:
     except Exception as e:
         print(f"  Error writing admin config at {cfg_path}: {e}")
 
+def generate_pk_sequences(config: Dict[str, Any]) -> None:
+    """
+    Generates unique PK sequences for each domain and saves them to a CSV.
+    
+    Constraints:
+    - Sequence length is defined by application_config.pk_length.
+    - Sequence MUST NOT start with index 0 (home).
+    - Sequence CAN contain index 0 in any other position.
+    - Sequence MUST NOT contain any indices of tripwire pages.
+    - The same digit MUST NOT appear consecutively (e.g., no '22').
+    
+    Output:
+    - build/pk_sequences.csv (Format: domain, pk_sequence).
+    """
+    global BUILD_DIR, REPO_ROOT
+    repo_root = REPO_ROOT if REPO_ROOT is not None else (BUILD_DIR.parent if BUILD_DIR is not None else Path(__file__).resolve().parents[2])
+    build_dir = BUILD_DIR if BUILD_DIR is not None else (repo_root / 'build')
 
+    app_config = config.get("application_config", {})
+    pk_length = app_config.get("pk_length", 5)
+    
+    public_sites = config.get("public_sites", [])
+    if not public_sites:
+        return
+
+    # Pull sequences per site from updated app_config
+    num_sequences_per_site = app_config.get('num_sequences_per_site', 10)
+    all_generated_pairs = []
+    sysrand = random.SystemRandom()
+
+    print(f"\nGenerating PK Sequences (Length: {pk_length}, Non-Consecutive):")
+
+    for site in public_sites:
+        domain = site.get("domain", "unknown")
+        pages_menu = site.get("pages_menu", [])
+        
+        # Access tripwires stored in the config datastore by generate_public_config_php
+        tripwire_names = site.get('tripwire_pages', [])
+        tripwire_indices = {pages_menu.index(t) for t in tripwire_names if t in pages_menu}
+        
+        # 1. Define all valid indices (including 0/home, excluding tripwires)
+        valid_indices = [i for i in range(len(pages_menu)) if i not in tripwire_indices]
+        
+        # 2. Define indices valid for the START of the sequence (exclude 0)
+        valid_start_indices = [i for i in valid_indices if i != 0]
+
+        if not valid_start_indices:
+            print(f"  ⚠️ Warning: No valid start indices for {domain}.")
+            continue
+
+        # 3. Generate Unique Sequences
+        site_sequences = set()
+        attempts = 0
+        while len(site_sequences) < num_sequences_per_site and attempts < 5000:
+            seq_digits = []
+            last_digit = None
+            
+            for position in range(pk_length):
+                # Filter current choices to prevent consecutive duplicates
+                current_valid = [i for i in valid_indices if i != last_digit]
+                
+                if position == 0:
+                    # Constraint: Must not start with 0
+                    start_choices = [i for i in valid_start_indices]
+                    digit = sysrand.choice(start_choices)
+                else:
+                    # Constraint: No consecutive identical digits
+                    if not current_valid:
+                        break # Safety break if menu is too small
+                    digit = sysrand.choice(current_valid)
+                
+                seq_digits.append(str(digit))
+                last_digit = digit
+            
+            if len(seq_digits) == pk_length:
+                site_sequences.add("".join(seq_digits))
+            attempts += 1
+
+        for s in site_sequences:
+            all_generated_pairs.append((domain, s))
+        
+        print(f"  ✓ Generated {len(site_sequences)} sequences for {domain}")
+
+    # 4. Write to CSV
+    csv_path = build_dir / "pk_sequences.csv"
+    try:
+        with open(csv_path, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            writer.writerows(all_generated_pairs)
+        print(f"✓ PK sequences successfully exported to: {csv_path}")
+    except Exception as e:
+        print(f"  ✗ Error writing PK sequences CSV: {e}")
+        
 def main():
     """Main entry point."""
     # Compute repository root (two levels up from this script: /repo_root)
@@ -664,6 +758,7 @@ def main():
         num_unique_pk_sequences = config.get("project_meta", {}).get("num_unique_pk_sequences", 0)
         num_public_sites = len(config.get("public_sites", []))
         num_sequences_per_site = ceil(num_unique_pk_sequences / num_public_sites)
+        app_config['num_sequences_per_site'] = num_sequences_per_site
 
         for site in config.get("public_sites", []):
             domain = site.get("domain", "unknown")
@@ -694,6 +789,9 @@ def main():
             print(f"✓ Generated sites available under: {repo_root / 'build'}")
         except Exception:
             print("✓ Generated sites created (build location may vary)")
+
+        # Generate PK sequences and export to CSV
+        generate_pk_sequences(config)
 
         return 0
         
