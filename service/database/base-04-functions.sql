@@ -41,25 +41,19 @@ END;
 $$;
 
 CREATE OR REPLACE FUNCTION get_user(
-	p_username VARCHAR
+    p_username TEXT
 )
-RETURNS TABLE (
-	username VARCHAR,
-	password_hash VARCHAR,
-	authenticated BOOLEAN
-) 
+RETURNS SETOF users 
 LANGUAGE plpgsql
--- SECURITY DEFINER allows the function to bypass direct table permissions
 SECURITY DEFINER
--- Hardens against search_path hijacking
 SET search_path = public, pg_temp
 AS $$
 BEGIN
-	RETURN QUERY
-	SELECT u.username, u.password, u.authenticated
-	FROM users u
-	WHERE u.username = p_username
-	LIMIT 1;
+    RETURN QUERY
+    SELECT *
+    FROM users
+    WHERE username = p_username
+    LIMIT 1;
 END;
 $$;
 

@@ -787,10 +787,10 @@ def generate_sql_01_roles(config: Dict[str, Any]) -> None:
     except Exception as e:
         print(f"  ✗ Error writing 01_roles.sql: {e}")
 
-def generate_sql_02_tables(config: Dict[str, Any]) -> None:
+def generate_sql_02_tables_extensions(config: Dict[str, Any]) -> None:
     """
-    Generates 02_tables.sql in build/database.
-    Extends base-02-tables.sql with dynamic columns from root-level secret_door/room_fields.
+    Generates 02_tables_extensions.sql in build/database.
+    Generates dynamic columns from root-level secret_door/room_fields.
     Applies maxlength to VARCHAR fields.
     """
     global BUILD_DIR, REPO_ROOT
@@ -799,21 +799,21 @@ def generate_sql_02_tables(config: Dict[str, Any]) -> None:
     
     db_dir = build_dir / 'database'
     db_dir.mkdir(parents=True, exist_ok=True)
-    out_sql_path = db_dir / '02_tables.sql'
+    out_sql_path = db_dir / '02_tables_extensions.sql'
     
-    # Source path for the base SQL template
-    base_sql_path = repo_root / 'service' / 'database' / 'base-02-tables.sql'
+    # # Source path for the base SQL template
+    # base_sql_path = repo_root / 'service' / 'database' / 'base-02-tables.sql'
 
-    if not base_sql_path.exists():
-        print(f"  ✗ Error: Base SQL file not found at {base_sql_path}")
-        return
+    # if not base_sql_path.exists():
+    #     print(f"  ✗ Error: Base SQL file not found at {base_sql_path}")
+    #     return
 
-    try:
-        with open(base_sql_path, 'r', encoding='utf-8') as f:
-            base_sql_content = f.read()
-    except Exception as e:
-        print(f"  ✗ Error reading base SQL: {e}")
-        return
+    # try:
+    #     with open(base_sql_path, 'r', encoding='utf-8') as f:
+    #         base_sql_content = f.read()
+    # except Exception as e:
+    #     print(f"  ✗ Error reading base SQL: {e}")
+    #     return
 
     extensions = ["\n-- Dynamic Schema Extensions based on YAML Config"]
 
@@ -861,14 +861,42 @@ def generate_sql_02_tables(config: Dict[str, Any]) -> None:
             extensions.append(f'ALTER TABLE secret_room_submissions ADD COLUMN IF NOT EXISTS "{col}" {dtype};')
 
     # Combine and Write
-    full_sql = base_sql_content + "\n".join(extensions) + "\n"
+    full_sql = "".join(extensions) + "\n"
 
     try:
         with open(out_sql_path, 'w', encoding='utf-8') as f:
             f.write(full_sql)
         print(f"✓ SQL script generated: {out_sql_path}")
     except Exception as e:
-        print(f"  ✗ Error writing 02_tables.sql: {e}")
+        print(f"  ✗ Error writing {out_sql_path}: {e}")
+
+def copy_sql_template(source_name: str, dest_name: str) -> None:
+    """
+    Generic utility to copy static SQL files from service/database to build/database.
+    
+    Args:
+        source_name: Filename in service/database (e.g. 'base-03-policies.sql')
+        dest_name: Output filename in build/database (e.g. '03_policies.sql')
+    """
+    global BUILD_DIR, REPO_ROOT
+    repo_root = REPO_ROOT if REPO_ROOT is not None else Path(__file__).resolve().parents[2]
+    build_dir = BUILD_DIR if BUILD_DIR is not None else (repo_root / 'build')
+    
+    db_dir = build_dir / 'database'
+    db_dir.mkdir(parents=True, exist_ok=True)
+    
+    source_path = repo_root / 'service' / 'database' / source_name
+    dest_path = db_dir / dest_name
+
+    if not source_path.exists():
+        print(f"  ✗ Error: Source SQL file not found at {source_path}")
+        return
+
+    try:
+        shutil.copy(source_path, dest_path)
+        print(f"✓ SQL script copied: {dest_path}")
+    except Exception as e:
+        print(f"  ✗ Error copying {dest_name}: {e}")
 
 def main():
     """Main entry point."""
@@ -977,7 +1005,14 @@ def main():
         generate_sql_01_roles(config)
 
         # Generate SQL script for tables
-        generate_sql_02_tables(config)
+        copy_sql_template("base-02-tables.sql", "02_tables.sql")
+        generate_sql_02_tables_extensions(config)
+
+        # Copy SQL script for policies
+        copy_sql_template("base-03-policies.sql", "03_policies.sql")
+
+        # Copy SQL script for functions
+        copy_sql_template("base-04-functions.sql", "04_functions.sql")
 
         return 0
         
