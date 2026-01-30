@@ -9,6 +9,7 @@
 
 <header>
     <h2>Secret Garden</h2>
+    <!-- Navigation menu-->
     <nav>
         <ul>
             <?php foreach (PAGES as $slug => $page_id): ?>
@@ -30,6 +31,7 @@
             <?php endforeach; ?>
         </ul>
     </nav>
+    <!-- End of Navigation menu-->
 </header>
 <hr>
 
