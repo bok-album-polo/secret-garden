@@ -12,13 +12,21 @@ Usage:
     filename: The YAML file to validate (default: service/init.yaml)
 """
 
+import random
 import sys
 import os
+import shutil
+import re
 from pathlib import Path
 from math import ceil
 import yaml
+import json
 from typing import Any, Dict, List, Optional
 from jsonschema import validate, ValidationError, Draft7Validator
+
+# Global repository root and build directory (set by `main()`)
+REPO_ROOT: Optional[Path] = None
+BUILD_DIR: Optional[Path] = None
 
 
 # Define the schema for the configuration file
@@ -174,11 +182,7 @@ CONFIG_SCHEMA = {
 }
 
 
-def get_service_path() -> Path:
-    """Get the service directory path relative to the script location."""
-    script_dir = Path(__file__).parent
-    service_dir = script_dir.parent
-    return service_dir
+# `get_service_path` removed: functions now compute `repo_root` from __file__ directly.
 
 
 def load_yaml_file(filepath: Path) -> Dict[str, Any]:
@@ -302,24 +306,225 @@ def compute_discovery_probabilities(num_pages_menu: int,
     return p_session, p_single, steps
 
 
+def clear_generated_content() -> None:
+    """Remove the `build` directory (where all generated content is stored).
+
+    Uses the module-level `BUILD_DIR` or `REPO_ROOT` if set, otherwise falls back to the current working directory.
+    """
+    global BUILD_DIR, REPO_ROOT
+    if BUILD_DIR is not None:
+        build_dir = BUILD_DIR
+    elif REPO_ROOT is not None:
+        build_dir = REPO_ROOT / 'build'
+    else:
+        build_dir = Path.cwd() / 'build'
+
+    if build_dir.exists():
+        try:
+            if build_dir.is_dir():
+                shutil.rmtree(build_dir)
+            else:
+                build_dir.unlink()
+            print(f"Removed generated build directory: {build_dir}")
+        except Exception as e:
+            print(f"Warning: failed to remove {build_dir}: {e}")
+    else:
+        print("No generated build directory found to remove.")
+
+
+def clone_public_sites(config: Dict[str, Any], source_dir: Optional[Path] = None) -> None:
+    """Clone `public-site-source` into numbered directories under the module `BUILD_DIR` or `REPO_ROOT`."""
+    # Determine repo_root and source_dir
+    global REPO_ROOT, BUILD_DIR
+    repo_root = REPO_ROOT if REPO_ROOT is not None else (BUILD_DIR.parent if BUILD_DIR is not None else Path(__file__).resolve().parents[2])
+    if source_dir is None:
+        source_dir = repo_root / "public-site-source"
+
+    print("\nCloning public-site-source for each public site:")
+    if not source_dir.exists() or not source_dir.is_dir():
+        print(f"Warning: source directory not found: {source_dir}")
+        return
+
+    build_dir = BUILD_DIR if BUILD_DIR is not None else (repo_root / 'build')
+    build_dir.mkdir(parents=True, exist_ok=True)
+
+    for idx, site in enumerate(config.get("public_sites", []), start=1):
+        domain = site.get("domain", f"site{idx}")
+        # sanitize domain to a filesystem-friendly directory name
+        safe = re.sub(r'[^A-Za-z0-9._-]+', '-', domain)
+        safe = safe.strip('-').lower()
+        dest = build_dir / f"{idx:02d}-{safe}"
+        try:
+            if dest.exists():
+                print(f"  Removing existing destination: {dest}")
+                if dest.is_dir():
+                    shutil.rmtree(dest)
+                else:
+                    dest.unlink()
+            shutil.copytree(source_dir, dest)
+            print(f"  Copied {source_dir} -> {dest}")
+        except Exception as e:
+            print(f"  Error copying to {dest}: {e}")
+
+
+def generate_config_php(config: Dict[str, Any]) -> None:
+    """Generate a `config/config.php` file for each generated public site.
+
+    The PHP file will set `$config` to the decoded JSON for that domain's configuration.
+    """
+    global BUILD_DIR, REPO_ROOT
+    repo_root = REPO_ROOT if REPO_ROOT is not None else (BUILD_DIR.parent if BUILD_DIR is not None else Path(__file__).resolve().parents[2])
+    build_dir = BUILD_DIR if BUILD_DIR is not None else (repo_root / 'build')
+
+    for idx, site in enumerate(config.get("public_sites", []), start=1):
+        domain = site.get("domain", f"site{idx}")
+        safe = re.sub(r'[^A-Za-z0-9._-]+', '-', domain).strip('-').lower()
+        site_dir = build_dir / f"{idx:02d}-{safe}"
+        if not site_dir.exists():
+            print(f"Warning: generated site directory not found for {domain}: {site_dir}")
+            continue
+
+        cfg_dir = site_dir / 'config'
+        cfg_dir.mkdir(parents=True, exist_ok=True)
+        cfg_path = cfg_dir / 'config.php'
+
+        # Prepare JSON payload: merge site config with selected project_meta and application_config fields
+        payload = dict(site)  # shallow copy of the site-specific config
+
+        # Remove num_tripwire_pages from export (we'll generate tripwire_pages instead)
+        num_tripwire = payload.pop('num_tripwire_pages', 0) or 0
+
+        # Add selected project_meta fields
+        project_meta = config.get('project_meta', {})
+        payload['project_meta'] = {
+            'environment': project_meta.get('environment'),
+            'mode': project_meta.get('mode')
+        }
+
+        # Add selected application_config fields
+        app_cfg = config.get('application_config', {})
+        payload['application_config'] = {
+            'pk_length': app_cfg.get('pk_length'),
+            'pk_max_history': app_cfg.get('pk_max_history'),
+            'generated_password_length': app_cfg.get('generated_password_length'),
+            'generated_password_charset': app_cfg.get('generated_password_charset')
+        }
+
+        # Generate tripwire_pages: random picks from pages_menu excluding the first page and the secret_door value
+        pages_menu = site.get('pages_menu', []) or []
+        candidates = pages_menu[1:] if len(pages_menu) > 1 else []
+        secret_door = site.get('routing_secrets', {}).get('secret_door') if site.get('routing_secrets') else None
+        if secret_door in candidates:
+            candidates.remove(secret_door)
+
+        tripwire = []
+        try:
+            num_tripwire_int = int(num_tripwire)
+        except Exception:
+            num_tripwire_int = 0
+
+        if num_tripwire_int > 0 and candidates:
+            count = min(num_tripwire_int, len(candidates))
+            sysrand = random.SystemRandom()
+            tripwire = sysrand.sample(candidates, count)
+
+        payload['tripwire_pages'] = tripwire
+
+        # Merge root-level secret_door_fields into the site's secret_door_fields.
+        # - Fill missing attributes (html_type, maxlength, etc.) from root by matching `name`.
+        # - Append any root fields missing entirely from the site so each site has the full set.
+        root_fields = {f['name']: f for f in config.get('secret_door_fields', [])}
+        site_fields = payload.get('secret_door_fields', []) or []
+
+        merged_fields = []
+        seen = set()
+        for s in site_fields:
+            name = s.get('name')
+            if not name:
+                merged_fields.append(dict(s))
+                continue
+            root = root_fields.get(name)
+            merged = dict(s)  # copy site-specific values
+            if root:
+                # Copy useful keys from root only when missing in site field
+                for key in ('html_type', 'maxlength', 'required', 'options'):
+                    if key in root and key not in merged:
+                        merged[key] = root[key]
+            merged_fields.append(merged)
+            seen.add(name)
+
+        # Append root fields not present in the site, but drop 'pg_type' (site uses domain-specific types)
+        for name, root in root_fields.items():
+            if name in seen:
+                continue
+            appended = dict(root)
+            appended.pop('pg_type', None)
+            merged_fields.append(appended)
+
+        payload['secret_door_fields'] = merged_fields
+
+        # Include root-level secret_page_fields in the per-site config, but drop 'pg_type'
+        root_page_fields = config.get('secret_page_fields', []) or []
+        processed_page_fields = []
+        for pf in root_page_fields:
+            pcopy = dict(pf)
+            pcopy.pop('pg_type', None)
+            processed_page_fields.append(pcopy)
+        payload['secret_page_fields'] = processed_page_fields
+
+        json_payload = json.dumps(payload, indent=2, ensure_ascii=False)
+
+        php_content = ("<?php\n"
+                       "// Generated configuration for domain: %s\n"
+                       "$config = json_decode(<<<'JSON'\n%s\nJSON\n, true);\n") % (domain, json_payload)
+
+        try:
+            with open(cfg_path, 'w', encoding='utf-8') as f:
+                f.write(php_content)
+            print(f"  Wrote config for {domain} -> {cfg_path}")
+        except Exception as e:
+            print(f"  Error writing config for {domain} at {cfg_path}: {e}")
+
 def main():
     """Main entry point."""
-    # Parse command line arguments
+    # Compute repository root (two levels up from this script: /repo_root)
+    repo_root = Path(__file__).resolve().parents[2]
+    service_dir = repo_root / 'service'
+    global REPO_ROOT, BUILD_DIR
+    REPO_ROOT = repo_root
+    BUILD_DIR = repo_root / "build"
+
+    # Handle --reset flag
+    if '--reset' in sys.argv:
+        clear_generated_content()
+        print("Reset complete.")
+        return 0
+
     if len(sys.argv) > 1:
-        # Use provided filename as-is
-        filepath = Path(sys.argv[1])
+        # Use provided filename as-is (skip --reset if present)
+        filenames = [arg for arg in sys.argv[1:] if not arg.startswith('--')]
+        filepath = Path(filenames[0]) if filenames else (service_dir / "init.yaml")
     else:
         # Default to service/init.yaml
-        service_dir = get_service_path()
         filepath = service_dir / "init.yaml"
-    
+
     print(f"Validating configuration file: {filepath}")
-    
+
+    # Check for existing generated content in `build` and prompt user about clearing
+    if BUILD_DIR.exists():
+        ans = input("Generated content found in 'build'. Clear all generated content and start over? [y/N]: ").strip().lower()
+        if ans in ("y", "yes"):
+            clear_generated_content()
+            print("Starting over after cleanup.")
+        else:
+            print("Initialization aborted by user.")
+            return 0
+
     try:
         # Load YAML file
         config = load_yaml_file(filepath)
         print("✓ YAML file loaded successfully")
-        
+
         # Validate against schema
         is_valid, error_msg = validate_config(config, CONFIG_SCHEMA)
         if not is_valid:
@@ -327,7 +532,7 @@ def main():
             print(f"  {error_msg}")
             return 1
         print("✓ Schema validation passed")
-        
+
         # Validate cross-references
         is_valid, error_msg = validate_cross_references(config)
         if not is_valid:
@@ -337,22 +542,22 @@ def main():
             return 1
         print("✓ Cross-reference validation passed")
         print("✓ Configuration is valid!")
-        
+
         # Compute and display discovery probability for each public site
         print("\nPK Discovery Probability Analysis:")
         app_config = config.get("application_config", {})
         pk_length = app_config.get("pk_length", 0)
         pk_max_history = app_config.get("pk_max_history", 0)
         sliding_window = pk_max_history - pk_length + 1
-        
+
         num_unique_pk_sequences = config.get("project_meta", {}).get("num_unique_pk_sequences", 0)
         num_public_sites = len(config.get("public_sites", []))
         num_sequences_per_site = ceil(num_unique_pk_sequences / num_public_sites)
-        
+
         for site in config.get("public_sites", []):
             domain = site.get("domain", "unknown")
             num_pages_menu = len(site.get("pages_menu", []))
-            
+
             num_tripwire = site.get("num_tripwire_pages", 0)
             p_session, p_single, steps = compute_discovery_probabilities(
                 num_pages_menu, num_sequences_per_site, pk_length, sliding_window, num_tripwire)
@@ -362,7 +567,19 @@ def main():
             print(f"    P_single={num_sequences_per_site}/(({num_pages_menu}-1)^{pk_length})={p_single}")
             print(f"    sliding_window={sliding_window}")
             print(f"    P_session={p_session:.8f}")
-        
+
+        source_dir = repo_root / "public-site-source"
+        clone_public_sites(config, source_dir)
+
+        # Generate per-site `config/config.php` files
+        generate_config_php(config)
+
+        # Report where generated sites were placed
+        try:
+            print(f"✓ Generated sites available under: {repo_root / 'build'}")
+        except Exception:
+            print("✓ Generated sites created (build location may vary)")
+
         return 0
         
     except (FileNotFoundError, ValueError) as e:
