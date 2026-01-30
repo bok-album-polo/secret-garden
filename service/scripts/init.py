@@ -53,6 +53,7 @@ CONFIG_SCHEMA = {
                 "environment": {"type": "string", "enum": ["production", "development"]},
                 "num_public_sites": {"type": "integer", "minimum": 1},
                 "num_unique_pk_sequences": {"type": "integer", "minimum": 1},
+                "num_generated_usernames": {"type": "integer", "minimum": 10},
                 "mode": {"type": "string", "enum": ["readonly", "readwrite"]}
             },
             "additionalProperties": False
@@ -898,6 +899,284 @@ def copy_sql_template(source_name: str, dest_name: str) -> None:
     except Exception as e:
         print(f"  ✗ Error copying {dest_name}: {e}")
 
+def generate_sql_05_permissions(config: Dict[str, Any]) -> None:
+    """
+    Generates 05_permissions.sql in build/database.
+    Reads base-05-permissions.sql and generates a block of permissions 
+    for EACH unique database user found in the config (admin + public sites).
+    """
+    global BUILD_DIR, REPO_ROOT
+    repo_root = REPO_ROOT if REPO_ROOT is not None else Path(__file__).resolve().parents[2]
+    build_dir = BUILD_DIR if BUILD_DIR is not None else (repo_root / 'build')
+    
+    db_dir = build_dir / 'database'
+    db_dir.mkdir(parents=True, exist_ok=True)
+    out_sql_path = db_dir / '05_permissions.sql'
+    
+    # Source path for the base SQL template
+    base_sql_path = repo_root / 'service' / 'database' / 'base-05-permissions.sql'
+
+    if not base_sql_path.exists():
+        print(f"  ✗ Error: Base SQL file not found at {base_sql_path}")
+        return
+
+    try:
+        with open(base_sql_path, 'r', encoding='utf-8') as f:
+            base_template = f.read()
+    except Exception as e:
+        print(f"  ✗ Error reading base permissions SQL: {e}")
+        return
+
+    final_sql_blocks = ["-- Generated Permissions for Secret Garden Users"]
+    processed_users = set()
+
+    # Collect all unique users from Admin and Public sites
+    all_sites = [config.get('admin_site', {})] + config.get('public_sites', [])
+
+    for site in all_sites:
+        creds = site.get('db_credentials', {})
+        user = creds.get('user')
+        
+        if user and user not in processed_users:
+            # Replace placeholder 'dbuser' with the actual username
+            # We use distinct SQL blocks for each user to ensure full coverage
+            user_block = base_template.replace("dbuser", f'"{user}"')
+            final_sql_blocks.append(f"\n-- Permissions for role: {user}")
+            final_sql_blocks.append(user_block)
+            processed_users.add(user)
+
+    try:
+        with open(out_sql_path, 'w', encoding='utf-8') as f:
+            f.write("\n".join(final_sql_blocks))
+        print(f"✓ SQL script generated: {out_sql_path}")
+    except Exception as e:
+        print(f"  ✗ Error writing 05_permissions.sql: {e}")
+
+def generate_sql_06_data(config: Dict[str, Any]) -> None:
+    """
+    Generates 06_data.sql in build/database.
+    Seeds both 'pk_sequences' and 'users' tables from their respective CSVs.
+    """
+    global BUILD_DIR, REPO_ROOT
+    repo_root = REPO_ROOT if REPO_ROOT is not None else Path(__file__).resolve().parents[2]
+    build_dir = BUILD_DIR if BUILD_DIR is not None else (repo_root / 'build')
+    
+    db_dir = build_dir / 'database'
+    db_dir.mkdir(parents=True, exist_ok=True)
+    sql_path = db_dir / '06_data.sql'
+    
+    sql_lines = ["-- Seed Data for Secret Garden", ""]
+
+    # --- Part 1: PK Sequences ---
+    pk_csv = build_dir / 'pk_sequences.csv'
+    if pk_csv.exists():
+        values = []
+        try:
+            with open(pk_csv, 'r', newline='', encoding='utf-8') as f:
+                reader = csv.reader(f)
+                for row in reader:
+                    if len(row) < 2: continue
+                    domain = row[0].replace("'", "''")
+                    seq = row[1].replace("'", "''")
+                    values.append(f"('{domain}', '{seq}')")
+            
+            if values:
+                sql_lines.append("-- 1. Seed pk_sequences")
+                sql_lines.append("INSERT INTO pk_sequences (domain, pk_sequence) VALUES")
+                sql_lines.append(",\n".join(values))
+                sql_lines.append("ON CONFLICT (domain, pk_sequence) DO NOTHING;\n")
+            else:
+                sql_lines.append("-- No PK sequences found in CSV\n")
+        except Exception as e:
+            print(f"  ✗ Error reading pk_sequences.csv: {e}")
+            sql_lines.append(f"-- Error reading pk_sequences.csv: {e}")
+    else:
+        sql_lines.append("-- Warning: pk_sequences.csv not found")
+
+    # --- Part 2: Users (Usernames/Displaynames) ---
+    users_csv = build_dir / 'base_usernames.csv'
+    if users_csv.exists():
+        values = []
+        try:
+            with open(users_csv, 'r', newline='', encoding='utf-8') as f:
+                reader = csv.reader(f)
+                header = next(reader, None) # Skip header
+                for row in reader:
+                    if len(row) < 2: continue
+                    username = row[0].replace("'", "''")
+                    displayname = row[1].replace("'", "''")
+                    values.append(f"('{username}', '{displayname}')")
+            
+            if values:
+                sql_lines.append("-- 2. Seed users (Vending Pool)")
+                sql_lines.append("INSERT INTO users (username, displayname) VALUES")
+                sql_lines.append(",\n".join(values))
+                sql_lines.append("ON CONFLICT (username) DO NOTHING;\n")
+            else:
+                sql_lines.append("-- No users found in base_usernames.csv\n")
+        except Exception as e:
+            print(f"  ✗ Error reading base_usernames.csv: {e}")
+            sql_lines.append(f"-- Error reading base_usernames.csv: {e}")
+    else:
+        sql_lines.append("-- Warning: base_usernames.csv not found")
+
+    # Write final file
+    try:
+        with open(sql_path, 'w', encoding='utf-8') as f:
+            f.write("\n".join(sql_lines))
+        print(f"✓ SQL data script generated: {sql_path}")
+    except Exception as e:
+        print(f"  ✗ Error writing 06_data.sql: {e}")
+
+def generate_base_usernames_csv(config: Dict[str, Any]) -> None:
+    """
+    Generates base-usernames.csv in build/.
+    Creates a pool of 'username' and 'displayname' entries.
+    
+    Format:
+      - username: "adjective_noun" (e.g. "obsidian_falcon")
+      - displayname: "Adjective Noun" (e.g. "Obsidian Falcon")
+      
+    Keyspace: 300 x 300 = 90,000 unique combinations.
+    Count: defined by project_meta.num_generated_usernames
+    """
+    global BUILD_DIR, REPO_ROOT
+    repo_root = REPO_ROOT if REPO_ROOT is not None else Path(__file__).resolve().parents[2]
+    build_dir = BUILD_DIR if BUILD_DIR is not None else (repo_root / 'build')
+    
+    csv_path = build_dir / 'base_usernames.csv'
+    
+    # Target count from specific config variable
+    project_meta = config.get("project_meta", {})
+    target_count = project_meta.get("num_generated_usernames", 100)
+    
+    # 300 Adjectives
+    adjectives = [
+        "absurd", "acidic", "active", "actual", "adept", "agile", "alert", "alive", "alpine", "amber",
+        "ancient", "angry", "arcade", "arcane", "arctic", "arid", "armed", "astral", "atomic", "auto",
+        "autumn", "aware", "azure", "basic", "black", "blank", "blind", "blonde", "blue", "bold",
+        "brave", "brief", "bright", "broad", "bronze", "brown", "bumpy", "busy", "calm", "cheap",
+        "chief", "civil", "clean", "clear", "clever", "cloudy", "cold", "cool", "cosmic", "crazy",
+        "creepy", "crisp", "cruel", "cryptic", "curly", "cyan", "daily", "damp", "daring", "dark",
+        "deadly", "dear", "deep", "dense", "digital", "direct", "divine", "dizzy", "double", "drab",
+        "dry", "dual", "dull", "dusty", "dynamic", "eager", "early", "earthy", "easy", "electric",
+        "elite", "empty", "epic", "equal", "eternal", "exact", "exotic", "faint", "fair", "fake",
+        "fancy", "fast", "fatal", "feral", "fierce", "filthy", "fine", "firm", "first", "fixed",
+        "flat", "fluid", "flying", "fond", "fragile", "free", "fresh", "frosty", "frozen", "full",
+        "funny", "future", "fuzzy", "giant", "gifted", "glass", "global", "glowing", "gold", "golden",
+        "good", "grand", "gray", "great", "green", "grey", "grim", "gross", "happy", "hard",
+        "harsh", "hazy", "heavy", "heroic", "hidden", "high", "hollow", "holy", "honest", "hot",
+        "huge", "humble", "humid", "hush", "hyper", "icy", "idle", "indigo", "infinite", "inner",
+        "iron", "jade", "jolly", "just", "keen", "kind", "large", "last", "late", "lazy",
+        "leafy", "lean", "legal", "light", "lime", "little", "live", "living", "local", "lone",
+        "long", "loose", "lost", "loud", "lovely", "loyal", "lucky", "lunar", "mad", "magic",
+        "magma", "main", "major", "manual", "many", "marble", "master", "mean", "mega", "mellow",
+        "merry", "metal", "mild", "mini", "minor", "mint", "misty", "mobile", "modern", "moody",
+        "mossy", "motion", "muddy", "muted", "mystic", "narrow", "native", "navy", "near", "neat",
+        "neon", "new", "nice", "night", "noble", "noisy", "north", "novel", "null", "ocean",
+        "odd", "old", "olive", "omega", "only", "onyx", "open", "orange", "outer", "pale",
+        "past", "peace", "pearl", "pink", "plain", "plastic", "polar", "polite", "poor", "prime",
+        "prism", "proud", "pure", "purple", "quick", "quiet", "radio", "rainy", "rapid", "rare",
+        "raw", "ready", "real", "red", "regal", "retro", "rich", "ripe", "rising", "risky",
+        "robust", "rocky", "rose", "rough", "round", "royal", "ruby", "rude", "rustic", "rusty",
+        "sacred", "safe", "sage", "salty", "sandy", "sane", "savage", "scarlet", "secret", "secure",
+        "senior", "shadow", "sharp", "shiny", "short", "shy", "sick", "silent", "silky", "silly",
+        "silver", "simple", "single", "sleek", "slim", "slow", "small", "smart", "smooth", "snowy",
+        "soft", "solar", "solid", "solo", "sonic", "sour", "spare", "spark", "spicy", "spiky",
+        "spiral", "spirit", "stable", "static", "steady", "steel", "steep", "sticky", "stiff", "still",
+        "stone", "stormy", "strict", "strong", "sturdy", "subtle", "sudden", "sunny", "super", "sweet",
+        "swift", "tall", "tame", "tart", "teal", "tech", "tender", "tense", "thin", "tidy",
+        "tight", "tiny", "tired", "top", "tough", "toxic", "true", "twin", "ugly", "ultra",
+        "unique", "urban", "vague", "vain", "vast", "velvet", "vexed", "vibrant", "video", "violet",
+        "viral", "virtual", "vital", "vivid", "void", "warm", "wary", "weak", "weird", "west",
+        "wet", "white", "whole", "wide", "wild", "windy", "winged", "winter", "wise", "witty",
+        "wooden", "wrong", "yellow", "young", "zen", "zero", "zinc", "zone", "zoom"
+    ]
+    
+    # 300 Nouns
+    nouns = [
+        "ace", "agent", "alpha", "anchor", "angel", "apex", "arch", "area", "arena", "ark",
+        "arm", "army", "arrow", "art", "ash", "atom", "audio", "aura", "auto", "axe",
+        "axis", "badge", "band", "bank", "bar", "base", "bat", "bay", "beam", "bear",
+        "beast", "beat", "bee", "bell", "belt", "beta", "bias", "bird", "bit", "blade",
+        "blast", "blaze", "block", "blood", "bloom", "boat", "body", "bolt", "bomb", "bond",
+        "bone", "book", "boom", "boot", "boss", "bot", "box", "brain", "brick", "bridge",
+        "bug", "bulk", "bull", "byte", "cable", "cage", "cake", "call", "camp", "can",
+        "cap", "car", "card", "case", "cat", "cave", "cell", "cent", "chain", "chaos",
+        "chart", "chat", "chef", "chip", "city", "clan", "claw", "clay", "cliff", "clock",
+        "cloud", "club", "clue", "coal", "coast", "coat", "cobra", "code", "coin", "cold",
+        "cone", "core", "corn", "cost", "cow", "crab", "crash", "crew", "crow", "crown",
+        "cube", "cult", "cup", "cycle", "dance", "dark", "dash", "data", "date", "dawn",
+        "day", "deal", "deck", "deed", "deep", "deer", "delta", "demo", "den", "desk",
+        "dial", "dice", "diet", "disc", "dish", "disk", "dock", "dog", "doll", "dome",
+        "door", "dot", "dove", "drag", "draw", "dream", "drive", "drop", "drum", "duck",
+        "dust", "duty", "eagle", "ear", "earth", "east", "echo", "edge", "eel", "egg",
+        "elf", "elk", "elm", "end", "epic", "exit", "eye", "face", "fact", "fall",
+        "fan", "farm", "fate", "fear", "feat", "feed", "fern", "file", "film", "fin",
+        "fire", "fish", "fist", "flag", "flame", "flash", "flat", "flaw", "fleet", "flow",
+        "flux", "fly", "foam", "fog", "folk", "font", "food", "foot", "force", "ford",
+        "fork", "form", "fort", "fox", "frame", "frog", "frost", "fuel", "full", "fund",
+        "fuse", "gain", "game", "gap", "gas", "gate", "gear", "gem", "gene", "ghost",
+        "giant", "gift", "gig", "girl", "glass", "glory", "glove", "glow", "glue", "goal",
+        "goat", "gold", "golf", "grab", "grid", "grip", "grit", "guard", "guest", "guide",
+        "gulf", "gull", "gum", "gun", "guru", "hail", "hair", "hall", "halo", "hand",
+        "hare", "harp", "hat", "hawk", "head", "heap", "heart", "heat", "helm", "help",
+        "herb", "hero", "hill", "hint", "hive", "hole", "home", "hood", "hook", "hope",
+        "horn", "hose", "host", "hour", "hub", "hull", "hunt", "hut", "ice", "icon",
+        "idea", "idol", "image", "inch", "ink", "inn", "ion", "iron", "isle", "item",
+        "jack", "jade", "jail", "jam", "jar", "jaw", "jay", "jazz", "jeep", "jet",
+        "job", "jog", "join", "joke", "joy", "jump", "junk", "jury", "keep", "key",
+        "kick", "kid", "kill", "kin", "king", "kiss", "kite", "kiwi", "knee", "knot",
+        "lab", "lad", "lake", "lamb", "lamp", "land", "lane", "lark", "last", "law",
+        "layer", "lead", "leaf", "leak", "lean", "leap", "lens", "life", "lift", "light",
+        "lily", "lime", "line", "link", "lion", "lip", "list", "load", "lock", "log",
+        "loop", "lord", "loss", "luck", "lump", "lung", "lure", "lush", "lynx", "mace",
+        "mage", "magma", "mail", "main", "mall", "man", "map", "mark", "mars", "mask",
+        "mass", "mast", "mate", "math", "maze", "meal", "meat", "mech", "melt", "memo",
+        "menu", "mesh", "mess", "metal", "mile", "milk", "mill", "mind", "mine", "mint",
+        "mist", "mite", "mix", "mob", "mode", "mold", "mole", "monk", "mood", "moon",
+        "moose", "moss", "moth", "move", "mud", "mule", "muse", "musk", "nail", "name",
+        "nano", "nap", "navy", "neck", "need", "neon", "nest", "net", "news", "next",
+        "nice", "node", "noise", "noon", "north", "nose", "note", "noun", "nova", "null",
+        "nut", "oak", "oar", "oat", "ocean", "odd", "oil", "old", "olive", "omen",
+        "one", "onion", "onyx", "opal", "orb", "orc", "order", "owl", "ox", "pack",
+        "page", "pain", "pair", "palm", "pan", "panel", "panic", "paper", "park", "part",
+        "pass", "path", "pawn", "peak", "pear", "pearl", "pen", "pet", "phase", "phone",
+        "photo", "pike", "pilot", "pine", "pipe", "pit", "plan", "plane", "plant", "plate"
+    ]
+    
+    sysrand = random.SystemRandom()
+    generated = set()
+    rows = []
+    
+    keyspace = len(adjectives) * len(nouns)
+    print(f"\nGenerating {target_count} usernames (Keyspace: {keyspace} combinations)...")
+    
+    attempts = 0
+    max_attempts = target_count * 20 
+    
+    while len(rows) < target_count and attempts < max_attempts:
+        attempts += 1
+        adj = sysrand.choice(adjectives)
+        noun = sysrand.choice(nouns)
+        
+        # Format: adjective_noun (no suffix)
+        username = f"{adj}{noun}"
+        displayname = f"{adj.title()} {noun.title()}"
+        
+        if username not in generated:
+            generated.add(username)
+            rows.append((username, displayname))
+            
+    try:
+        with open(csv_path, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            writer.writerow(['username', 'displayname'])
+            writer.writerows(rows)
+        print(f"✓ Usernames CSV generated: {csv_path}")
+    except Exception as e:
+        print(f"  ✗ Error writing base-usernames.csv: {e}")
+
 def main():
     """Main entry point."""
     # Compute repository root (two levels up from this script: /repo_root)
@@ -1005,14 +1284,29 @@ def main():
         generate_sql_01_roles(config)
 
         # Generate SQL script for tables
-        copy_sql_template("base-02-tables.sql", "02_tables.sql")
+        copy_sql_template("02_tables.sql", "02_tables.sql")
         generate_sql_02_tables_extensions(config)
 
         # Copy SQL script for policies
-        copy_sql_template("base-03-policies.sql", "03_policies.sql")
+        copy_sql_template("03_policies.sql", "03_policies.sql")
 
         # Copy SQL script for functions
-        copy_sql_template("base-04-functions.sql", "04_functions.sql")
+        copy_sql_template("04_functions.sql", "04_functions.sql")
+
+        # Generate SQL script for permissions
+        generate_sql_05_permissions(config)
+
+        # Generate base-usernames.csv if it does not already exist
+        base_usernames_path = BUILD_DIR / "base_usernames.csv"
+        user_provided_base_usernames_path = service_dir / "base-usernames.csv"
+        if not user_provided_base_usernames_path.exists():
+            generate_base_usernames_csv(config)
+        else:
+            print(f"✓ base-usernames.csv already exists at {user_provided_base_usernames_path}, copying into build directory.")
+            shutil.copy(user_provided_base_usernames_path, base_usernames_path)
+
+        # Generate SQL script for seeding data
+        generate_sql_06_data(config)
 
         return 0
         
