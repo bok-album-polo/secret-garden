@@ -4,6 +4,7 @@ project_meta:
   environment: "production" # Options: production, development
   num_public_sites: 2 
   num_unique_pk_sequences: 20
+  num_generated_usernames: 2000
   mode: "readwrite" # Options: readonly, readwrite
 
 # Shared Database Infrastructure (PostgreSQL)
