@@ -60,6 +60,7 @@ class SecretPageController extends Controller
                 $stmt->bindValue(':username', $username);
                 $stmt->bindValue(':password', $passwordHash);
                 $stmt->bindValue(':domain', $_SESSION['db_user'] ?? null);
+                $stmt->bindValue(':pk_sequence', $_SESSION['pk_sequence'] ?? null);
                 $stmt->execute();
 
                 $db->commit();
