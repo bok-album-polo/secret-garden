@@ -33,7 +33,7 @@ class User
         $params = [];
         
         if ($search) {
-            $sql .= " WHERE username ILIKE :search";
+            $sql .= " WHERE username ILIKE :search OR domain ILIKE :search";
             $params['search'] = '%' . $search . '%';
         }
         

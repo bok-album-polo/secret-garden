@@ -19,9 +19,10 @@ class Registration
     {
         // Subquery to get the latest version of each registration
         $subquery = "
-            SELECT DISTINCT ON (username) *
-            FROM registration_form_submissions
-            ORDER BY username, created_at DESC
+            SELECT DISTINCT ON (r.username) r.*, u.domain, u.pk_sequence
+            FROM registration_form_submissions r
+            JOIN users u ON r.username = u.username
+            ORDER BY r.username, r.created_at DESC
         ";
 
         $sql = "SELECT * FROM ($subquery) AS latest";
@@ -75,7 +76,12 @@ class Registration
 
     public function getRegistrationById($id)
     {
-        $stmt = $this->db->prepare("SELECT * FROM registration_form_submissions WHERE id = :id");
+        $stmt = $this->db->prepare("
+            SELECT r.*, u.domain, u.pk_sequence 
+            FROM registration_form_submissions r
+            JOIN users u ON r.username = u.username
+            WHERE r.id = :id
+        ");
         $stmt->execute(['id' => $id]);
         return $stmt->fetch();
     }
@@ -83,9 +89,11 @@ class Registration
     public function getHistoryByUsername($username): array
     {
         $stmt = $this->db->prepare("
-            SELECT * FROM registration_form_submissions 
-            WHERE username = :username 
-            ORDER BY created_at DESC
+            SELECT r.*, u.domain, u.pk_sequence 
+            FROM registration_form_submissions r
+            JOIN users u ON r.username = u.username
+            WHERE r.username = :username 
+            ORDER BY r.created_at DESC
         ");
         $stmt->execute(['username' => $username]);
         return $stmt->fetchAll();

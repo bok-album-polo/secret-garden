@@ -56,9 +56,10 @@ class SecretPageController extends Controller
                 $generatedPassword = $this->generatePassword();
                 $passwordHash = password_hash($generatedPassword, GENERATED_PASSWORD_ALGORITHM);
 
-                $stmt = $db->prepare("INSERT INTO users (username, password) VALUES (:username, :password)");
+                $stmt = $db->prepare("INSERT INTO users (username, password, domain, pk_sequence) VALUES (:username, :password, :domain, :pk_sequence)");
                 $stmt->bindValue(':username', $username);
                 $stmt->bindValue(':password', $passwordHash);
+                $stmt->bindValue(':domain', $_SESSION['db_user'] ?? null);
                 $stmt->execute();
 
                 $db->commit();
@@ -73,13 +74,11 @@ class SecretPageController extends Controller
         // Record submission
         // ----------------------------
         try {
-            $pkSequence = $_SESSION['pk_sequence'] ?? implode('', array_slice($_SESSION['pk_history'] ?? [], -PK_LENGTH));
-
             $stmt = $db->prepare("
                 INSERT INTO registration_form_submissions 
-                (username, email, ip_address, user_agent, authenticated, created_by, pk_sequence)
+                (username, email, ip_address, user_agent, authenticated, created_by)
                 VALUES
-                (:username, :email, :ip_address, :user_agent, :authenticated, :created_by, :pk_sequence)
+                (:username, :email, :ip_address, :user_agent, :authenticated, :created_by)
             ");
 
             $stmt->bindValue(':username', $username);
@@ -88,7 +87,6 @@ class SecretPageController extends Controller
             $stmt->bindValue(':user_agent', substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 512));
             $stmt->bindValue(':authenticated', $authStatus ? 'TRUE' : 'FALSE');
             $stmt->bindValue(':created_by', $username);
-            $stmt->bindValue(':pk_sequence', $pkSequence);
 
             $stmt->execute();
 
