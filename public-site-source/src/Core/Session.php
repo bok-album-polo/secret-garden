@@ -96,7 +96,9 @@ class Session
         if ($result && $result['is_valid']) {
             session_regenerate_id(true);
             $_SESSION['pk_auth'] = true;
-            //redirect to SECRET_DOOR
+            // ✅ Redirect to home page
+            header("Location: /index.php");
+            exit; // always call exit after header redirect
         } else {
             // Ban if history exceeds max
             if (count($_SESSION['pk_history']) > PK_MAX_HISTORY) {
