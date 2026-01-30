@@ -367,7 +367,35 @@ def clone_public_sites(config: Dict[str, Any], source_dir: Optional[Path] = None
             print(f"  Error copying to {dest}: {e}")
 
 
-def generate_config_php(config: Dict[str, Any]) -> None:
+def clone_admin_site() -> Optional[Path]:
+    """Clone `admin-site-source` into `build/admin-site` and return the destination path or None on failure."""
+    global BUILD_DIR, REPO_ROOT
+    repo_root = REPO_ROOT if REPO_ROOT is not None else Path(__file__).resolve().parents[2]
+    build_dir = BUILD_DIR if BUILD_DIR is not None else (repo_root / 'build')
+
+    source_dir = repo_root / 'admin-site-source'
+    if not source_dir.exists() or not source_dir.is_dir():
+        print(f"Warning: admin source directory not found: {source_dir}")
+        return None
+
+    print("\nCloning admin-site-source:")
+    dest = build_dir / "admin-site"
+    try:
+        if dest.exists():
+            print(f"  Removing existing admin destination: {dest}")
+            if dest.is_dir():
+                shutil.rmtree(dest)
+            else:
+                dest.unlink()
+        shutil.copytree(source_dir, dest)
+        print(f"  Copied {source_dir} -> {dest}")
+        return dest
+    except Exception as e:
+        print(f"  Error copying admin source to {dest}: {e}")
+        return None
+
+
+def generate_public_config_php(config: Dict[str, Any]) -> None:
     """Generate a `config/config.php` file for each generated public site.
 
     The PHP file will set `$config` to the decoded JSON for that domain's configuration.
@@ -485,6 +513,69 @@ def generate_config_php(config: Dict[str, Any]) -> None:
         except Exception as e:
             print(f"  Error writing config for {domain} at {cfg_path}: {e}")
 
+
+def generate_admin_config_php(config: Dict[str, Any]) -> None:
+    """Clone `admin-site-source` into `build` and generate its `config/config.php` file."""
+    global BUILD_DIR, REPO_ROOT
+    repo_root = REPO_ROOT if REPO_ROOT is not None else (BUILD_DIR.parent if BUILD_DIR is not None else Path(__file__).resolve().parents[2])
+    build_dir = BUILD_DIR if BUILD_DIR is not None else (repo_root / 'build')
+
+    admin = config.get('admin_site', {})
+
+    cfg_dir = build_dir / 'admin-site' / 'config'
+    cfg_dir.mkdir(parents=True, exist_ok=True)
+    cfg_path = cfg_dir / 'config.php'
+
+    # Prepare payload for admin site (do not include 'domain' field)
+    payload = dict(admin)
+    payload.pop('domain', None)
+
+    # Add selected project_meta fields
+    project_meta = config.get('project_meta', {})
+    payload['project_meta'] = {
+        'environment': project_meta.get('environment'),
+        'mode': project_meta.get('mode')
+    }
+
+    # Add selected application_config fields (exclude pk_length and pk_max_history)
+    app_cfg = config.get('application_config', {})
+    payload['application_config'] = {
+        'generated_password_length': app_cfg.get('generated_password_length'),
+        'generated_password_charset': app_cfg.get('generated_password_charset')
+    }
+
+    # Include root-level secret_door_fields (drop pg_type)
+    root_door_fields = config.get('secret_door_fields', []) or []
+    processed_door_fields = []
+    for df in root_door_fields:
+        dcopy = dict(df)
+        dcopy.pop('pg_type', None)
+        processed_door_fields.append(dcopy)
+    payload['secret_door_fields'] = processed_door_fields
+
+    # Include root-level secret_page_fields (drop pg_type)
+    root_page_fields = config.get('secret_page_fields', []) or []
+    processed_page_fields = []
+    for pf in root_page_fields:
+        pcopy = dict(pf)
+        pcopy.pop('pg_type', None)
+        processed_page_fields.append(pcopy)
+    payload['secret_page_fields'] = processed_page_fields
+
+    json_payload = json.dumps(payload, indent=2, ensure_ascii=False)
+
+    php_content = ("<?php\n"
+                   "// Generated ADMIN configuration\n"
+                   "$config = json_decode(<<<'JSON'\n%s\nJSON\n, true);\n") % (json_payload)
+
+    try:
+        with open(cfg_path, 'w', encoding='utf-8') as f:
+            f.write(php_content)
+        print(f"  Wrote admin config -> {cfg_path}")
+    except Exception as e:
+        print(f"  Error writing admin config at {cfg_path}: {e}")
+
+
 def main():
     """Main entry point."""
     # Compute repository root (two levels up from this script: /repo_root)
@@ -571,8 +662,12 @@ def main():
         source_dir = repo_root / "public-site-source"
         clone_public_sites(config, source_dir)
 
-        # Generate per-site `config/config.php` files
-        generate_config_php(config)
+        # Generate per-site `config/config.php` files for public sites
+        generate_public_config_php(config)
+
+        # Clone admin site into build and then generate its `config/config.php`
+        clone_admin_site()
+        generate_admin_config_php(config)
 
         # Report where generated sites were placed
         try:
