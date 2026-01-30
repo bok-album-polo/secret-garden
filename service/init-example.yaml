@@ -15,6 +15,7 @@ database_server:
 # Core Application Logic Constants
 application_config:
   pk_length: 5
+  common_sequence_threshold: .02 # reject pk_sequence if pk_sequence in top n% of common PINs
   pk_max_history: 20 # Note: Must be >= pk_length
   generated_password_length: 8
   generated_password_charset: "0123456789"

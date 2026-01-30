@@ -24,6 +24,7 @@ import yaml
 import json
 from typing import Any, Dict, List, Optional
 from jsonschema import validate, ValidationError, Draft7Validator
+import urllib.request
 
 # Global repository root and build directory (set by `main()`)
 REPO_ROOT: Optional[Path] = None
@@ -78,7 +79,8 @@ CONFIG_SCHEMA = {
                 "pk_length": {"type": "integer", "minimum": 1},
                 "pk_max_history": {"type": "integer", "minimum": 1},
                 "generated_password_length": {"type": "integer", "minimum": 1},
-                "generated_password_charset": {"type": "string"}
+                "generated_password_charset": {"type": "string"},
+                "common_sequence_threshold": {"type": "number", "minimum": 0.0, "maximum": 1.0}
             },
             "additionalProperties": False
         },
@@ -597,6 +599,38 @@ def generate_admin_config_php(config: Dict[str, Any]) -> None:
     except Exception as e:
         print(f"  Error writing admin config at {cfg_path}: {e}")
 
+def is_string_in_top_n(file_path: Path, string: str, n_threshold: int) -> bool:
+    """
+    Checks if the string exists within the top N lines of the common PIN file.
+    
+    Args:
+        file_path: Path to the downloaded common PIN list.
+        string: The generated PK sequence string.
+        n_threshold: The line number limit (e.g., top 100).
+        
+    Returns:
+        bool: True if found within top N lines, False otherwise.
+    """
+    if not file_path.exists() or n_threshold <= 0:
+        return False
+        
+    try:
+        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+            for line_num, line in enumerate(f, 1):
+                if line_num > n_threshold:
+                    break
+                
+                # Clean line: split by comma or space to handle CSVs with metadata
+                line_content = line.strip().split(',')[0].split()[0]
+                
+                if line_content == string:
+                    print(f"  ⚠️ String '{string}' found at rank {line_num} (Top {n_threshold} filter).")
+                    return True
+    except Exception as e:
+        print(f"  ⚠️ Error reading file for filtering: {e}")
+        
+    return False
+
 def generate_pk_sequences(config: Dict[str, Any]) -> None:
     """
     Generates unique PK sequences for each domain and saves them to a CSV.
@@ -617,17 +651,43 @@ def generate_pk_sequences(config: Dict[str, Any]) -> None:
 
     app_config = config.get("application_config", {})
     pk_length = app_config.get("pk_length", 5)
-    
+    common_sequence_threshold = app_config.get("common_sequence_threshold", 0.0)
+    common_sequence_threshold = int(pow(10, pk_length) * common_sequence_threshold)
+
+    has_common_pin_file = False
+
+    # --- BEGIN COMMON PIN DOWNLOAD BLOCK ---
+    common_pin_urls = {
+        3: "https://github.com/Slon104/Common-PIN-Analysis-from-haveibeenpwned.com/raw/refs/heads/main/Word%20Lists/5%20PIN%20by%20Slon104.txt",
+        4: "https://github.com/Slon104/Common-PIN-Analysis-from-haveibeenpwned.com/raw/refs/heads/main/Word%20Lists/4%20PIN%20by%20Slon104.txt",
+        5: "https://github.com/Slon104/Common-PIN-Analysis-from-haveibeenpwned.com/raw/refs/heads/main/Word%20Lists/5%20PIN%20by%20Slon104.txt",
+        6: "https://github.com/Slon104/Common-PIN-Analysis-from-haveibeenpwned.com/raw/refs/heads/main/Word%20Lists/6%20PIN%20by%20Slon104.txt",
+    }
+
+    if pk_length in common_pin_urls:
+        url = common_pin_urls[pk_length]
+        common_pin_file = build_dir / f"common_pins_{pk_length}.txt"
+        print(f"[*] Downloading Common PIN list for pk_length {pk_length}...")
+        try:
+            build_dir.mkdir(parents=True, exist_ok=True)
+            urllib.request.urlretrieve(url, common_pin_file)
+            has_common_pin_file = True
+            print(f"✓ Common PIN list saved to: {common_pin_file}")
+        except Exception as e:
+            print(f"⚠️ Failed to download PIN list: {e}. Continuing without filter.")
+    else:
+        print(f"[*] No Common PIN list found for pk_length {pk_length}, continuing.")
+    # --- END COMMON PIN DOWNLOAD BLOCK ---
+
     public_sites = config.get("public_sites", [])
     if not public_sites:
         return
 
-    # Pull sequences per site from updated app_config
     num_sequences_per_site = app_config.get('num_sequences_per_site', 10)
     all_generated_pairs = []
     sysrand = random.SystemRandom()
 
-    print(f"\nGenerating PK Sequences (Length: {pk_length}, Non-Consecutive):")
+    print(f"\nGenerating PK Sequences (Length: {pk_length}:")
 
     for site in public_sites:
         domain = site.get("domain", "unknown")
@@ -652,27 +712,26 @@ def generate_pk_sequences(config: Dict[str, Any]) -> None:
         attempts = 0
         while len(site_sequences) < num_sequences_per_site and attempts < 5000:
             seq_digits = []
-            last_digit = None
+            digit = last_digit = None
             
             for position in range(pk_length):
-                # Filter current choices to prevent consecutive duplicates
-                current_valid = [i for i in valid_indices if i != last_digit]
-                
-                if position == 0:
-                    # Constraint: Must not start with 0
-                    start_choices = [i for i in valid_start_indices]
-                    digit = sysrand.choice(start_choices)
-                else:
-                    # Constraint: No consecutive identical digits
-                    if not current_valid:
-                        break # Safety break if menu is too small
-                    digit = sysrand.choice(current_valid)
-                
+                # Constraint: No consecutive identical digits
+                while digit == last_digit:
+                    if position == 0:
+                        digit = sysrand.choice(valid_start_indices)
+                    else:
+                        digit = sysrand.choice(valid_indices)
+
                 seq_digits.append(str(digit))
                 last_digit = digit
             
-            if len(seq_digits) == pk_length:
-                site_sequences.add("".join(seq_digits))
+            if len(seq_digits) >= pk_length:
+                candidate_seq = "".join(seq_digits)
+                if has_common_pin_file:
+                    if is_string_in_top_n(common_pin_file, candidate_seq, common_sequence_threshold):
+                        attempts += 1
+                        continue  # Discard and try again
+                site_sequences.add(candidate_seq)
             attempts += 1
 
         for s in site_sequences:
