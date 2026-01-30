@@ -10,8 +10,6 @@ CREATE TABLE secret_room_submissions (
 	id SERIAL PRIMARY KEY,
 	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
 	created_by VARCHAR(50),
-	domain VARCHAR(100) DEFAULT CURRENT_USER,
-	pk_sequence VARCHAR(20),
 	ip_address INET,
 	user_agent VARCHAR(512),
 	authenticated BOOLEAN DEFAULT FALSE,
@@ -39,7 +37,9 @@ CREATE TABLE users (
 	displayname VARCHAR(100),
 	password VARCHAR(255) DEFAULT NULL,
 	authenticated BOOLEAN DEFAULT FALSE,
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+	domain VARCHAR(100) DEFAULT NULL,
+	pk_sequence VARCHAR(20) DEFAULT NULL,
+	created_at TIMESTAMP WITH TIME ZONE DEFAULT NULL,
 	time_dispatched TIMESTAMP WITH TIME ZONE DEFAULT NULL
 );
 CREATE INDEX idx_usernames_vending_pool ON users (time_dispatched ASC) WHERE password IS NOT NULL;
