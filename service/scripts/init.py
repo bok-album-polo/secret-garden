@@ -127,7 +127,7 @@ CONFIG_SCHEMA = {
                         "items": {"type": "string"},
                         "minItems": 1
                     },
-                    "num_tripwire_pages": {"type": "integer", "minimum": 0},
+                    "num_tripwire_menu": {"type": "integer", "minimum": 0},
                     "secret_door_fields": {
                         "type": "array",
                         "items": {"$ref": "#/definitions/domain_field"}
@@ -258,7 +258,7 @@ def validate_cross_references(config: Dict[str, Any]) -> tuple[bool, Optional[st
             errors.append(f"Duplicate domain found: {domain}")
         seen.add(domain)
 
-    # Validate num_tripwire_pages per public site: must be < (pages_menu count - 2)
+    # Validate num_tripwire_menu per public site: must be < (pages_menu count - 2)
     for site in config.get("public_sites", []):
         domain = site.get("domain", "unknown")
 
@@ -281,16 +281,16 @@ def validate_cross_references(config: Dict[str, Any]) -> tuple[bool, Optional[st
                 "Security Risk: The registration/hidden page should not be linked in the public menu."
             )
         pages_menu_len = len(site.get("pages_menu", []))
-        num_tripwire = site.get("num_tripwire_pages")
+        num_tripwire = site.get("num_tripwire_menu")
         if num_tripwire is None:
             continue
         if not isinstance(num_tripwire, int):
-            errors.append(f"{domain}: num_tripwire_pages must be an integer")
+            errors.append(f"{domain}: num_tripwire_menu must be an integer")
             continue
         threshold = pages_menu_len - 2
         if num_tripwire >= threshold:
             errors.append(
-                f"{domain}: num_tripwire_pages ({num_tripwire}) must be < (pages_menu count - 2) ({threshold})"
+                f"{domain}: num_tripwire_menu ({num_tripwire}) must be < (pages_menu count - 2) ({threshold})"
             )
     
     if errors:
@@ -302,7 +302,7 @@ def compute_discovery_probabilities(num_pages_menu: int,
                                     num_sequences_per_site: int,
                                     pk_length: int,
                                     sliding_window: int,
-                                    num_tripwire_pages: int = 0) -> tuple[float, float, list]:
+                                    num_tripwire_menu: int = 0) -> tuple[float, float, list]:
     """Compute discovery probabilities for a site.
 
     Returns a tuple of (P_session_total, P_single, steps)
@@ -318,7 +318,7 @@ def compute_discovery_probabilities(num_pages_menu: int,
     for step in range(1, sliding_window + 1):
         # base survival probability per step (pages that are not tripwires)
         denom = (num_pages_menu - 1)
-        base_numer = (num_pages_menu - 1 - (num_tripwire_pages or 0))
+        base_numer = (num_pages_menu - 1 - (num_tripwire_menu or 0))
         base = base_numer / denom if denom > 0 else 0
         if base <= 0:
             p_survival = 0.0
@@ -445,8 +445,8 @@ def generate_public_config_php(config: Dict[str, Any]) -> None:
         # Prepare JSON payload: merge site config with selected project_meta and application_config fields
         payload = dict(site)  # shallow copy of the site-specific config
 
-        # Remove num_tripwire_pages from export (we'll generate tripwire_pages instead)
-        num_tripwire = payload.pop('num_tripwire_pages', 0) or 0
+        # Remove num_tripwire_menu from export (we'll generate tripwire_pages instead)
+        num_tripwire = payload.pop('num_tripwire_menu', 0) or 0
 
         # Add selected project_meta fields
         project_meta = config.get('project_meta', {})
@@ -1253,7 +1253,7 @@ def main():
             domain = site.get("domain", "unknown")
             num_pages_menu = len(site.get("pages_menu", []))
 
-            num_tripwire = site.get("num_tripwire_pages", 0)
+            num_tripwire = site.get("num_tripwire_menu", 0)
             p_session, p_single, steps = compute_discovery_probabilities(
                 num_pages_menu, num_sequences_per_site, pk_length, sliding_window, num_tripwire)
 
