@@ -687,7 +687,7 @@ def generate_pk_sequences(config: Dict[str, Any]) -> None:
     all_generated_pairs = []
     sysrand = random.SystemRandom()
 
-    print(f"\nGenerating PK Sequences (Length: {pk_length}:")
+    print(f"\nGenerating PK Sequences (Length: {pk_length}):")
 
     for site in public_sites:
         domain = site.get("domain", "unknown")
@@ -748,7 +748,45 @@ def generate_pk_sequences(config: Dict[str, Any]) -> None:
         print(f"✓ PK sequences successfully exported to: {csv_path}")
     except Exception as e:
         print(f"  ✗ Error writing PK sequences CSV: {e}")
-        
+
+def generate_sql_01_roles(config: Dict[str, Any]) -> None:
+    """
+    Generates 01_roles.sql in build/database.
+    Defines database roles for ALL sites (Admin + Public) uniformly.
+    """
+    global BUILD_DIR, REPO_ROOT
+    repo_root = REPO_ROOT if REPO_ROOT is not None else Path(__file__).resolve().parents[2]
+    build_dir = BUILD_DIR if BUILD_DIR is not None else (repo_root / 'build')
+    
+    db_dir = build_dir / 'database'
+    db_dir.mkdir(parents=True, exist_ok=True)
+    sql_path = db_dir / '01_roles.sql'
+
+    lines = ["-- Generated roles for Secret Garden"]
+    processed_users = set()
+
+    # Combine Admin site and Public sites into a single list to process uniformly
+    all_sites = [config.get('admin_site', {})] + config.get('public_sites', [])
+
+    for site in all_sites:
+        creds = site.get('db_credentials', {})
+        user = creds.get('user')
+        password = creds.get('pass')
+
+        # Create role only if credentials exist and user hasn't been created yet
+        if user and password and user not in processed_users:
+            lines.append(f'CREATE ROLE "{user}" WITH LOGIN PASSWORD \'{password}\';')
+            processed_users.add(user)
+
+    sql_content = "\n".join(lines) + "\n"
+
+    try:
+        with open(sql_path, 'w', encoding='utf-8') as f:
+            f.write(sql_content)
+        print(f"✓ SQL script generated: {sql_path}")
+    except Exception as e:
+        print(f"  ✗ Error writing 01_roles.sql: {e}")
+
 def main():
     """Main entry point."""
     # Compute repository root (two levels up from this script: /repo_root)
@@ -851,6 +889,9 @@ def main():
 
         # Generate PK sequences and export to CSV
         generate_pk_sequences(config)
+
+        # Generate SQL script for roles
+        generate_sql_01_roles(config)
 
         return 0
         
