@@ -27,17 +27,7 @@ ALTER TABLE registration_form_submissions
     DROP COLUMN domain,
     DROP COLUMN pk_sequence;
 
--- Update Policies
-DROP POLICY IF EXISTS domain_isolation_users ON users;
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
-CREATE POLICY domain_isolation_users ON users
-    FOR ALL USING (domain = CURRENT_USER)
-    WITH CHECK (domain = CURRENT_USER);
 
-DROP POLICY IF EXISTS domain_isolation_reg ON registration_form_submissions;
-CREATE POLICY domain_isolation_reg ON registration_form_submissions
-    FOR ALL USING (EXISTS (SELECT 1 FROM users u WHERE u.username = registration_form_submissions.username AND u.domain = CURRENT_USER))
-    WITH CHECK (EXISTS (SELECT 1 FROM users u WHERE u.username = registration_form_submissions.username AND u.domain = CURRENT_USER));
 
 -- Update Functions
 DROP FUNCTION IF EXISTS get_user(VARCHAR);
@@ -57,7 +47,7 @@ SET search_path = public, pg_temp
 AS $$
 BEGIN
 	RETURN QUERY
-	SELECT u.username, u.password, u.authenticated, u.domain, u.pk_sequence
+	SELECT *
 	FROM users u
 	WHERE u.username = p_username
 	LIMIT 1;
