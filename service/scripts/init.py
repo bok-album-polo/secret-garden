@@ -787,6 +787,89 @@ def generate_sql_01_roles(config: Dict[str, Any]) -> None:
     except Exception as e:
         print(f"  ✗ Error writing 01_roles.sql: {e}")
 
+def generate_sql_02_tables(config: Dict[str, Any]) -> None:
+    """
+    Generates 02_tables.sql in build/database.
+    Extends base-02-tables.sql with dynamic columns from root-level secret_door/room_fields.
+    Applies maxlength to VARCHAR fields.
+    """
+    global BUILD_DIR, REPO_ROOT
+    repo_root = REPO_ROOT if REPO_ROOT is not None else Path(__file__).resolve().parents[2]
+    build_dir = BUILD_DIR if BUILD_DIR is not None else (repo_root / 'build')
+    
+    db_dir = build_dir / 'database'
+    db_dir.mkdir(parents=True, exist_ok=True)
+    out_sql_path = db_dir / '02_tables.sql'
+    
+    # Source path for the base SQL template
+    base_sql_path = repo_root / 'service' / 'database' / 'base-02-tables.sql'
+
+    if not base_sql_path.exists():
+        print(f"  ✗ Error: Base SQL file not found at {base_sql_path}")
+        return
+
+    try:
+        with open(base_sql_path, 'r', encoding='utf-8') as f:
+            base_sql_content = f.read()
+    except Exception as e:
+        print(f"  ✗ Error reading base SQL: {e}")
+        return
+
+    extensions = ["\n-- Dynamic Schema Extensions based on YAML Config"]
+
+    # 1. Aggregate Secret Door Fields (Root Only)
+    secret_door_fields: Dict[str, str] = {}
+
+    for field in config.get('secret_door_fields', []):
+        name = field.get('name')
+        if not name:
+            continue
+            
+        pg_type = field.get('pg_type', 'TEXT')
+        # If type is VARCHAR, append the length
+        if pg_type.upper() == 'VARCHAR':
+            length = field.get('maxlength', 255)
+            pg_type = f"VARCHAR({length})"
+            
+        secret_door_fields[name] = pg_type
+
+    if secret_door_fields:
+        extensions.append("-- Extending secret_door_submissions")
+        for col, dtype in secret_door_fields.items():
+            extensions.append(f'ALTER TABLE secret_door_submissions ADD COLUMN IF NOT EXISTS "{col}" {dtype};')
+
+    # 2. Aggregate Secret Room Fields (Global)
+    # Variable renamed from room_cols to secret_room_fields
+    secret_room_fields: Dict[str, str] = {}
+    
+    for field in config.get('secret_page_fields', []):
+        name = field.get('name')
+        if not name:
+            continue
+
+        pg_type = field.get('pg_type', 'TEXT')
+        # If type is VARCHAR, append the length
+        if pg_type.upper() == 'VARCHAR':
+            length = field.get('maxlength', 255)
+            pg_type = f"VARCHAR({length})"
+
+        secret_room_fields[name] = pg_type
+
+    if secret_room_fields:
+        extensions.append("\n-- Extending secret_room_submissions")
+        for col, dtype in secret_room_fields.items():
+            extensions.append(f'ALTER TABLE secret_room_submissions ADD COLUMN IF NOT EXISTS "{col}" {dtype};')
+
+    # Combine and Write
+    full_sql = base_sql_content + "\n".join(extensions) + "\n"
+
+    try:
+        with open(out_sql_path, 'w', encoding='utf-8') as f:
+            f.write(full_sql)
+        print(f"✓ SQL script generated: {out_sql_path}")
+    except Exception as e:
+        print(f"  ✗ Error writing 02_tables.sql: {e}")
+
 def main():
     """Main entry point."""
     # Compute repository root (two levels up from this script: /repo_root)
@@ -892,6 +975,9 @@ def main():
 
         # Generate SQL script for roles
         generate_sql_01_roles(config)
+
+        # Generate SQL script for tables
+        generate_sql_02_tables(config)
 
         return 0
         
