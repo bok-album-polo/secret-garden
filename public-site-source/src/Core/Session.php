@@ -93,11 +93,15 @@ class Session
         $statement->execute([$_SESSION['pk_sequence']]);
         $result = $statement->fetch();
 
+
         if ($result && $result['is_valid']) {
             session_regenerate_id(true);
             $_SESSION['pk_auth'] = true;
-            // ✅ Redirect to home page
-            header("Location: /index.php");
+            $route = "/?page=" . SECRET_DOOR;
+            if (ENABLE_PRETTY_URLS) {
+                $route = "/" . SECRET_DOOR;
+            }
+            header("Location: $route");
             exit; // always call exit after header redirect
         } else {
             // Ban if history exceeds max
