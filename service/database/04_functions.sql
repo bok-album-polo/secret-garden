@@ -18,41 +18,6 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION check_ip_ban(
-	p_ip INET
-)
-RETURNS BOOLEAN
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, pg_temp
-AS $$
-BEGIN
-	RETURN EXISTS (
-		SELECT 1
-		FROM ip_bans
-		WHERE network >>= p_ip
-		  AND (expires_at IS NULL OR expires_at > NOW())
-	);
-END;
-$$;
-
-CREATE OR REPLACE FUNCTION get_user(
-    p_username TEXT
-)
-RETURNS SETOF users 
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, pg_temp
-AS $$
-BEGIN
-    RETURN QUERY
-    SELECT *
-    FROM users
-    WHERE username = p_username
-    LIMIT 1;
-END;
-$$;
-
 CREATE OR REPLACE FUNCTION dispatch_one_username()
 RETURNS TABLE(r_username VARCHAR, r_displayname VARCHAR, r_time TIMESTAMP WITH TIME ZONE)
 LANGUAGE plpgsql
@@ -73,6 +38,23 @@ BEGIN
         FOR UPDATE SKIP LOCKED
     ) 
     RETURNING username, displayname, time_dispatched;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION get_user(
+    p_username TEXT
+)
+RETURNS SETOF users 
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT *
+    FROM users
+    WHERE username = p_username
+    LIMIT 1;
 END;
 $$;
 
@@ -99,5 +81,23 @@ BEGIN
     IF NOT FOUND THEN
         RAISE EXCEPTION 'User % not found or already activated (password set).', p_username;
     END IF;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION check_ip_ban(
+	p_ip INET
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+	RETURN EXISTS (
+		SELECT 1
+		FROM ip_bans
+		WHERE network >>= p_ip
+		  AND (expires_at IS NULL OR expires_at > NOW())
+	);
 END;
 $$;
