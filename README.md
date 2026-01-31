@@ -132,7 +132,7 @@ For **each** public website, create a blueprint. You should aim for 5-9 pages. T
 
 #### 3. Register Domains
 
-### 🛠️ Staging
+### Phase 1: 🛠️ Staging
 
 The project uses a build system to generate site-specific PHP code and custom database schemas from a single configuration file.
 
@@ -168,6 +168,6 @@ Navigate to each generated site directory (e.g., `build/01-domain-name/`) to app
 * **Static Assets** (`static/`):
     Place images, CSS, and JavaScript here. They are served publicly at the `/static/` endpoint (e.g., `<link href="/static/style.css">`).
 
-### 🚢 Deployment
+### Phase 2: 🚢 Deployment
 
 TODO..
