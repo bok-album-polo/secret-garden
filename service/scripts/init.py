@@ -1000,7 +1000,6 @@ def generate_sql_05_permissions(config: Dict[str, Any]) -> None:
         print(f"✓ SQL script generated: {out_sql_path}")
     except Exception as e:
         print(f"  ✗ Error writing 05_permissions.sql: {e}")
-        print(f"  ✗ Error writing 05_permissions.sql: {e}")
 
 def generate_sql_06_data(config: Dict[str, Any]) -> None:
     """
