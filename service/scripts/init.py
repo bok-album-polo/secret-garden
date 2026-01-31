@@ -916,6 +916,35 @@ def copy_sql_template(source_name: str, dest_name: str) -> None:
     except Exception as e:
         print(f"  ✗ Error copying {dest_name}: {e}")
 
+def process_permission_template(
+    template_path: Path,
+    placeholder: str,
+    users: List[str],
+    sql_blocks: List[str],
+    processed_users: set
+) -> None:
+    """
+    Reads a SQL template, replaces a placeholder with usernames, and appends to the block list.
+    """
+    if not template_path.exists():
+        print(f"  ✗ Error: Base SQL file not found at {template_path}")
+        return
+
+    try:
+        with open(template_path, 'r', encoding='utf-8') as f:
+            template_content = f.read()
+    except Exception as e:
+        print(f"  ✗ Error reading base permissions SQL: {e}")
+        return
+
+    for user in users:
+        if user and user not in processed_users:
+            user_block = template_content.replace(placeholder, user)
+            sql_blocks.append(f"\n-- Permissions for role: {user}")
+            sql_blocks.append(user_block)
+            processed_users.add(user)
+
+
 def generate_sql_05_permissions(config: Dict[str, Any]) -> None:
     """
     Generates 05_permissions.sql in build/database.
@@ -930,62 +959,47 @@ def generate_sql_05_permissions(config: Dict[str, Any]) -> None:
     db_dir.mkdir(parents=True, exist_ok=True)
     out_sql_path = db_dir / '05_permissions.sql'
     
-    # Source path for the base SQL template
+    # Source paths for the base SQL templates
     base_admin_sql_path = repo_root / 'service' / 'database' / 'base-05-permissions-admin.sql'
     base_public_sql_path = repo_root / 'service' / 'database' / 'base-05-permissions-public.sql'
 
     final_sql_blocks = ["-- Generated Permissions for Secret Garden Users"]
     processed_users = set()
 
-    if not base_admin_sql_path.exists():
-        print(f"  ✗ Error: Base SQL file not found at {base_admin_sql_path}")
-        return
-
-    try:
-        with open(base_admin_sql_path, 'r', encoding='utf-8') as f:
-            base_admin_sql_template = f.read()
-    except Exception as e:
-        print(f"  ✗ Error reading base permissions SQL: {e}")
-        return
-
+    # 1. Process Admin User
     admin_site = config.get('admin_site', {})
-    creds = admin_site.get('db_credentials', {})
-    user = creds.get('user')
+    admin_user = admin_site.get('db_credentials', {}).get('user')
+    admin_users_list = [admin_user] if admin_user else []
 
-    user_block = base_admin_sql_template.replace("admin-site-user", f'{user}')
-    final_sql_blocks.append(f"\n-- Permissions for role: {user}")
-    final_sql_blocks.append(user_block)
-    processed_users.add(user)
+    process_permission_template(
+        template_path=base_admin_sql_path,
+        placeholder="admin-site-user",
+        users=admin_users_list,
+        sql_blocks=final_sql_blocks,
+        processed_users=processed_users
+    )
 
-    if not base_public_sql_path.exists():
-        print(f"  ✗ Error: Base SQL file not found at {base_public_sql_path}")
-        return
-
-    try:
-        with open(base_public_sql_path, 'r', encoding='utf-8') as f:
-            base_public_sql_template = f.read()
-    except Exception as e:
-        print(f"  ✗ Error reading base permissions SQL: {e}")
-        return
-
-    # Collect all unique users from Public sites
+    # 2. Process Public Site Users
+    public_users_list = []
     for site in config.get('public_sites', []):
-        creds = site.get('db_credentials', {})
-        user = creds.get('user')
-        
-        if user and user not in processed_users:
-            # Replace placeholder 'dbuser' with the actual username
-            # We use distinct SQL blocks for each user to ensure full coverage
-            user_block = base_public_sql_template.replace("public-site-user", f'{user}')
-            final_sql_blocks.append(f"\n-- Permissions for role: {user}")
-            final_sql_blocks.append(user_block)
-            processed_users.add(user)
+        user = site.get('db_credentials', {}).get('user')
+        if user:
+            public_users_list.append(user)
+
+    process_permission_template(
+        template_path=base_public_sql_path,
+        placeholder="public-site-user",
+        users=public_users_list,
+        sql_blocks=final_sql_blocks,
+        processed_users=processed_users
+    )
 
     try:
         with open(out_sql_path, 'w', encoding='utf-8') as f:
             f.write("\n".join(final_sql_blocks))
         print(f"✓ SQL script generated: {out_sql_path}")
     except Exception as e:
+        print(f"  ✗ Error writing 05_permissions.sql: {e}")
         print(f"  ✗ Error writing 05_permissions.sql: {e}")
 
 def generate_sql_06_data(config: Dict[str, Any]) -> None:
