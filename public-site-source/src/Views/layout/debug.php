@@ -1,7 +1,7 @@
 <?php
 if (ENVIRONMENT === 'development'):
     $pk_auth = $_SESSION['pk_auth'] ?? false;
-    $is_banned = $_SESSION['pk_ban'] ?? false;
+    $pk_ban = $_SESSION['pk_ban'] ?? false;
     ?>
     <style>
         #debug-panel {
@@ -34,56 +34,50 @@ if (ENVIRONMENT === 'development'):
                 <th>Value</th>
             </tr>
             <tr>
-                <td>Domain</td>
-                <td><?= DATABASE_USER ?></td>
+                <td>pk_sequence</td>
+                <td>
+                    <?= $_SESSION['pk_sequence'] ?>
+                </td>
             </tr>
             <tr>
-                <td>Secret Door</td>
-                <td><?= SECRET_DOOR ?></td>
-            </tr>
-            <tr>
-                <td>Secret Page</td>
-                <td><?= SECRET_PAGE ?></td>
-            </tr>
-            <tr>
-                <td>Sequence Length</td>
-                <td><?= PK_LENGTH ?></td>
-            </tr>
-            <tr>
-                <td>PK History</td>
+                <td>pk_historyy</td>
                 <td><?= implode('', $_SESSION['pk_history']) ?></td>
             </tr>
             <tr>
-                <td>PK Max History</td>
-                <td><?= PK_MAX_HISTORY ?></td>
-            </tr>
-            <tr>
-                <td>PK History Length</td>
+                <td>count($_SESSION['pk_history'])</td>
                 <td><?= count($_SESSION['pk_history']) ?></td>
             </tr>
             <tr>
-                <td>PK Banned</td>
-                <td><?= ($_SESSION['pk_ban'] ?? false) ? 'YES' : 'NO' ?></td>
+                <td>$pk_auth</td>
+                <td><?= $pk_auth ? 'true' : 'false' ?></td>
             </tr>
             <tr>
-                <td>PK Sequence</td>
-                <td>
-                    <?= $pk_auth
-                            ? ($_SESSION['pk_sequence'] ?? 'N/A')
-                            : implode('', array_slice($_SESSION['pk_history'], -PK_LENGTH)); ?>
-                </td>
+                <td>pk_ban</td>
+                <td><?= ($_SESSION['pk_ban'] ?? false) ? 'true' : 'false' ?></td>
+            </tr>
+            <tr>
+                <td>DATABASE_USER</td>
+                <td><?= DATABASE_USER ?></td>
+            </tr>
+            <tr>
+                <td>SECRET_DOOR</td>
+                <td><?= SECRET_DOOR ?></td>
+            </tr>
+            <tr>
+                <td>SECRET_PAGE</td>
+                <td><?= SECRET_PAGE ?></td>
+            </tr>
+            <tr>
+                <td>PK_LENGTH</td>
+                <td><?= PK_LENGTH ?></td>
+            </tr>
+            <tr>
+                <td>PK_MAX_HISTORY</td>
+                <td><?= PK_MAX_HISTORY ?></td>
             </tr>
             <tr>
                 <td>IP Address</td>
                 <td><?= $_SERVER['REMOTE_ADDR'] ?></td>
-            </tr>
-            <tr>
-                <td>IP Banned</td>
-                <td><?= $is_banned ? 'YES' : 'NO' ?></td>
-            </tr>
-            <tr>
-                <td>Authenticated</td>
-                <td><?= $pk_auth ? 'YES' : 'NO' ?></td>
             </tr>
             <tr>
                 <td>SessionUser</td>
@@ -96,7 +90,6 @@ if (ENVIRONMENT === 'development'):
         $logoutUrl = ENABLE_PRETTY_URLS ? '/pk-reset' : '?page=pk-reset';
         ?>
         <p><a href="<?= $logoutUrl ?>"><b>Restart my Session</b></a></p>
-
 
     </div>
 <?php endif; ?>
