@@ -6,3 +6,4 @@
 /*.code-workspace
 !.gitkeep
 config.php
+init.yaml
