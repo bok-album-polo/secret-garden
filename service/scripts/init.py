@@ -1118,7 +1118,7 @@ def generate_sql_06_data(config: Dict[str, Any]) -> None:
 
 def generate_base_usernames_csv(config: Dict[str, Any]) -> None:
     """
-    Generates base-usernames.csv in build/.
+    Generates base_usernames.csv in build/.
     Creates a pool of 'username' and 'displayname' entries.
     
     Format:
@@ -1263,7 +1263,7 @@ def generate_base_usernames_csv(config: Dict[str, Any]) -> None:
             writer.writerows(rows)
         print(f"✓ Usernames CSV generated: {csv_path}")
     except Exception as e:
-        print(f"  ✗ Error writing base-usernames.csv: {e}")
+        print(f"  ✗ Error writing {csv_path}: {e}")
 
 def discovery_probablity_analysis(config: Dict[str, Any]) -> None:
     """Computes and displays discovery probability for each public site."""
