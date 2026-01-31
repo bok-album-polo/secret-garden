@@ -77,13 +77,15 @@ CONFIG_SCHEMA = {
                 "pk_length",
                 "pk_max_history",
                 "generated_password_length",
-                "generated_password_charset"
+                "generated_password_charset",
+                "password_hash_algorithm"
             ],
             "properties": {
                 "pk_length": {"type": "integer", "minimum": 1},
                 "pk_max_history": {"type": "integer", "minimum": 1},
                 "generated_password_length": {"type": "integer", "minimum": 1},
                 "generated_password_charset": {"type": "string"},
+                "password_hash_algorithm": {"type": "string", "enum": ["bcrypt", "argon2id", "plaintext"]},
                 "common_sequence_threshold": {"type": "number", "minimum": 0.0, "maximum": 1.0}
             },
             "additionalProperties": False
