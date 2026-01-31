@@ -2,13 +2,24 @@
 
 namespace App\Controllers;
 
+use App\Config;
 use App\Core\Controller;
 use App\Core\Database;
-use InvalidArgumentException;
 use PDO;
+use PDOException;
+use RuntimeException;
 
 class SecretDoorController extends Controller
 {
+    private Config $config;
+    private PDO $db;
+
+    public function __construct()
+    {
+        $this->config = Config::instance();
+        $this->db = Database::getInstance();
+    }
+
     public function index(): void
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -23,20 +34,10 @@ class SecretDoorController extends Controller
 
     private function handleContact(): void
     {
-
-        $db = Database::getInstance();
-
         // ----------------------------
-        // Honeypot check
+        // Honeypot check - ban IP
         // ----------------------------
-        $stmt = $db->prepare(
-            "INSERT INTO ip_bans (network, reason)
-             VALUES (:network, 'Honeypot Triggered')
-             ON CONFLICT DO NOTHING"
-        );
-        $stmt->execute([
-            ':network' => $_SERVER['REMOTE_ADDR'] . '/32'
-        ]);
+        $this->banIpAddress($_SERVER['REMOTE_ADDR'], 'Honeypot Triggered');
 
         // ----------------------------
         // Basic validation
@@ -51,8 +52,8 @@ class SecretDoorController extends Controller
         $uploadedFile = null;
 
         try {
-            $uploadedFile = $this->handleFileUploadToDb('file_upload');
-        } catch (\RuntimeException $e) {
+            $uploadedFile = $this->handleFileUploadToDb('file');
+        } catch (RuntimeException $e) {
             error_log(
                 'File upload failed from IP ' .
                 $_SERVER['REMOTE_ADDR'] . ': ' . $e->getMessage()
@@ -62,31 +63,61 @@ class SecretDoorController extends Controller
         // ----------------------------
         // Persist submission
         // ----------------------------
-        $stmt = $db->prepare("
-        INSERT INTO contact_form_submissions
-        (name, email, message, ip_address, user_agent, uploaded_file, uploaded_file_name)
-        VALUES
-        (:name, :email, :message, :ip_address, :user_agent, :uploaded_file, :uploaded_file_name)
-    ");
-
-        $stmt->bindValue(':name', $name);
-        $stmt->bindValue(':email', $email);
-        $stmt->bindValue(':message', $message);
-        $stmt->bindValue(':ip_address', $_SERVER['REMOTE_ADDR']);
-        $stmt->bindValue(':user_agent', substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 512));
-        $stmt->bindValue(':uploaded_file', $uploadedFile['data'] ?? null, PDO::PARAM_LOB);
-        $stmt->bindValue(':uploaded_file_name', $uploadedFile['name'] ?? null);
-
-        $stmt->execute();
+        $this->recordContactSubmission($name, $email, $message, $uploadedFile);
     }
 
+    private function banIpAddress(string $ipAddress, string $reason): void
+    {
+        try {
+            $stmt = $this->db->prepare("
+                INSERT INTO ip_bans (network, reason)
+                VALUES (:network, :reason)
+                ON CONFLICT DO NOTHING
+            ");
+            $stmt->bindValue(':network', $ipAddress . '/32');
+            $stmt->bindValue(':reason', $reason);
+            $stmt->execute();
+        } catch (PDOException $e) {
+            error_log("IP ban insertion failed for '$ipAddress': " . $e->getMessage());
+        }
+    }
 
-    private function handleFileUploadToDb(string $inputName, int $maxSize = 1048576): ?array
+    private function recordContactSubmission(
+        string $name,
+        string $email,
+        string $message,
+        ?array $uploadedFile
+    ): void
+    {
+        try {
+            $stmt = $this->db->prepare("
+                INSERT INTO contact_form_submissions
+                (name, email, message, ip_address, user_agent, uploaded_file, uploaded_file_name)
+                VALUES
+                (:name, :email, :message, :ip_address, :user_agent, :uploaded_file, :uploaded_file_name)
+            ");
+
+            $stmt->bindValue(':name', $name);
+            $stmt->bindValue(':email', $email);
+            $stmt->bindValue(':message', $message);
+            $stmt->bindValue(':ip_address', $_SERVER['REMOTE_ADDR']);
+            $stmt->bindValue(':user_agent', substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 512));
+            $stmt->bindValue(':uploaded_file', $uploadedFile['data'] ?? null, PDO::PARAM_LOB);
+            $stmt->bindValue(':uploaded_file_name', $uploadedFile['name'] ?? null);
+
+            $stmt->execute();
+        } catch (PDOException $e) {
+            error_log("Contact form submission failed: " . $e->getMessage());
+        }
+    }
+
+    private function handleFileUploadToDb(string $inputName): ?array
     {
         if (empty($_FILES[$inputName]['name'])) {
             return null;
         }
 
+        $maxSize = $this->config->application_config['max_upload_size'] ?? 1048576; // Default 1MB
         $file = $_FILES[$inputName];
         $filename = basename($file['name']);
         $fileContent = '';
@@ -96,14 +127,14 @@ class SecretDoorController extends Controller
             $filename = "Upload error code {$file['error']}";
         } elseif ($file['size'] > $maxSize) {
             // If file too large, keep filename but empty content
-            error_log("File '{$filename}' exceeds maximum size of {$maxSize} bytes");
+            error_log("File '$filename' exceeds maximum size of $maxSize bytes");
         } else {
             // Read file content
             $content = file_get_contents($file['tmp_name']);
             if ($content !== false) {
                 $fileContent = $content;
             } else {
-                error_log("Failed to read file content for '{$filename}'");
+                error_log("Failed to read file content for '$filename'");
                 $filename = "Read error";
             }
         }
@@ -113,5 +144,4 @@ class SecretDoorController extends Controller
             'data' => $fileContent
         ];
     }
-
 }
