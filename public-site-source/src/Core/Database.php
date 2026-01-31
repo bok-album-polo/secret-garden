@@ -1,17 +1,44 @@
 <?php
 
 namespace App\Core;
+
+use App\Config;
+use PDO;
+use PDOException;
+
 class Database
 {
-    private static $instance = null;
+    private static ?PDO $instance = null;
 
-    public static function getInstance()
+    private function __construct()
+    {
+        // Private constructor to prevent direct instantiation
+    }
+
+    public static function getInstance(): PDO
     {
         if (self::$instance === null) {
-            $dsn = "pgsql:host=" . DATABASE_HOST . ";dbname=" . DATABASE_NAME;
-            self::$instance = new \PDO($dsn, DATABASE_USER, DATABASE_USER_PASSWORD);
-            self::$instance->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
-            self::$instance->setAttribute(\PDO::ATTR_DEFAULT_FETCH_MODE, \PDO::FETCH_ASSOC);
+            $config = Config::instance();
+            $database = $config->database_server;
+            $dbCreds = $config->db_credentials;
+
+            $dsn = sprintf(
+                "pgsql:host=%s;port=%d;dbname=%s",
+                $database['host'],
+                $database['port'],
+                $database['db_name']
+            );
+
+            try {
+                self::$instance = new PDO($dsn, $dbCreds['user'], $dbCreds['pass'], [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                    PDO::ATTR_EMULATE_PREPARES => false,
+                    PDO::ATTR_PERSISTENT => false
+                ]);
+            } catch (PDOException $e) {
+                throw new PDOException("Database connection failed: " . $e->getMessage());
+            }
         }
 
         return self::$instance;

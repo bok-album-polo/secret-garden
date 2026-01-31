@@ -1,9 +1,8 @@
 <?php
 
 // Fallback to empty strings if not set
-use App\Core\Session;
 
-$user = Session::get('dispatched_user') ?? [];
+$user = $_SESSION['dispatched_user'] ?? [];
 
 $dispatched_username = $user['username'] ?? '';
 $dispatched_display_name = $user['display_name'] ?? '';
