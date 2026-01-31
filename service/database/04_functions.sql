@@ -75,3 +75,29 @@ BEGIN
     RETURNING username, displayname, time_dispatched;
 END;
 $$;
+
+CREATE OR REPLACE FUNCTION activate_user(
+    p_username VARCHAR,
+    p_password VARCHAR,
+    p_pk_sequence VARCHAR
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+    UPDATE users
+    SET 
+        password = p_password,
+        pk_sequence = p_pk_sequence,
+        activated_at = NOW(),
+        domain = SESSION_USER::VARCHAR
+    WHERE username = p_username
+      AND password IS NULL;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'User % not found or already activated (password set).', p_username;
+    END IF;
+END;
+$$;
