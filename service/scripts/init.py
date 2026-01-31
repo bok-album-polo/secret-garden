@@ -128,6 +128,11 @@ CONFIG_SCHEMA = {
                         "minItems": 1
                     },
                     "num_tripwire_menu": {"type": "integer", "minimum": 0},
+                    "supplemental_tripwire_pages": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "minItems": 1
+                    },
                     "secret_door_fields": {
                         "type": "array",
                         "items": {"$ref": "#/definitions/domain_field"}
@@ -447,6 +452,7 @@ def generate_public_config_php(config: Dict[str, Any]) -> None:
 
         # Remove num_tripwire_menu from export (we'll generate tripwire_pages instead)
         num_tripwire = payload.pop('num_tripwire_menu', 0) or 0
+        payload.pop('supplemental_tripwire_pages', None)
 
         # Add selected project_meta fields
         project_meta = config.get('project_meta', {})
@@ -481,6 +487,14 @@ def generate_public_config_php(config: Dict[str, Any]) -> None:
             count = min(num_tripwire_int, len(candidates))
             sysrand = random.SystemRandom()
             tripwire = sysrand.sample(candidates, count)
+
+        # Add supplemental_tripwire_pages if present
+        supplemental_tripwire_pages = site.get('supplemental_tripwire_pages', []) or []
+        for sup_page in supplemental_tripwire_pages:
+            if sup_page not in tripwire and sup_page != secret_door:
+                tripwire.append(sup_page)
+
+        print(supplemental_tripwire_pages)
 
         site['tripwire_pages'] = tripwire
         payload['tripwire_pages'] = tripwire

@@ -84,7 +84,9 @@ public_sites:
         - maintenance
         - tools
         - contact
-    num_tripwire_pages: 1 # Must be < count of pages_menu - 2
+    num_tripwire_menu: 1 # Must be < count of pages_menu - 2
+    supplemental_tripwire_pages: # Optional additional tripwire pages
+      - privacy-policy
 
   - domain: "example2.com"
     db_credentials:
@@ -114,7 +116,7 @@ public_sites:
       - name: "message"
         label: "Inquiry Details"
         help_text: "Briefly describe your requirements (max 1000 chars)."
-    num_tripwire_pages: 1 # Must be < count of pages_menu - 2
+    num_tripwire_menu: 1 # Must be < count of pages_menu - 2
 
 ###############################################################################
 # FIELD_TYPE_EXAMPLES (Appendix for reference only)
