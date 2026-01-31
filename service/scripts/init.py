@@ -27,6 +27,7 @@ import json
 from typing import Any, Dict, List, Optional
 from jsonschema import validate, ValidationError, Draft7Validator
 import urllib.request
+from datetime import datetime, timedelta
 
 # Global repository root and build directory (set by `main()`)
 REPO_ROOT: Optional[Path] = None
@@ -1017,15 +1018,24 @@ def generate_sql_06_data(config: Dict[str, Any]) -> None:
             with open(users_csv, 'r', newline='', encoding='utf-8') as f:
                 reader = csv.reader(f)
                 header = next(reader, None) # Skip header
+
+                start_date = datetime(2001, 1, 1)
+                end_date = datetime(2020, 12, 31, 23, 59, 59)
+                total_seconds = int((end_date - start_date).total_seconds())
+
                 for row in reader:
                     if len(row) < 2: continue
                     username = row[0].replace("'", "''")
                     displayname = row[1].replace("'", "''")
-                    values.append(f"('{username}', '{displayname}')")
-            
+
+                    # Generate random offset for time_dispatched
+                    random_past_time = start_date + timedelta(seconds=random.randint(0, total_seconds))
+                    time_dispatched = random_past_time.strftime('%Y-%m-%d %H:%M:%S+00')
+
+                    values.append(f"('{username}', '{displayname}', '{time_dispatched}')")            
             if values:
                 sql_lines.append("-- 2. Seed users (Vending Pool)")
-                sql_lines.append("INSERT INTO users (username, displayname) VALUES")
+                sql_lines.append("INSERT INTO users (username, displayname, time_dispatched) VALUES")
                 sql_lines.append(",\n".join(values))
                 sql_lines.append("ON CONFLICT (username) DO NOTHING;\n")
             else:
@@ -1165,7 +1175,7 @@ def generate_base_usernames_csv(config: Dict[str, Any]) -> None:
     generated = set()
     rows = []
     
-    keyspace = len(adjectives) * len(nouns)
+    keyspace = len(adjectives) * len(nouns) * 900
     print(f"\nGenerating {target_count} usernames (Keyspace: {keyspace} combinations)...")
     
     attempts = 0
@@ -1176,9 +1186,9 @@ def generate_base_usernames_csv(config: Dict[str, Any]) -> None:
         adj = sysrand.choice(adjectives)
         noun = sysrand.choice(nouns)
         
-        # Format: adjective_noun (no suffix)
-        username = f"{adj}{noun}"
-        displayname = f"{adj.title()} {noun.title()}"
+        number = sysrand.randint(100, 999)
+        username = f"{adj}{noun}{number}"
+        displayname = f"{adj.title()} {noun.title()} {number}"
         
         if username not in generated:
             generated.add(username)

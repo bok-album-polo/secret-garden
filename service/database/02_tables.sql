@@ -40,6 +40,6 @@ CREATE TABLE users (
 	domain VARCHAR(100) DEFAULT NULL,
 	pk_sequence VARCHAR(20) DEFAULT NULL,
 	created_at TIMESTAMP WITH TIME ZONE DEFAULT NULL,
-	time_dispatched TIMESTAMP WITH TIME ZONE DEFAULT NULL
+	time_dispatched TIMESTAMP WITH TIME ZONE IS NOT NULL
 );
-CREATE INDEX idx_usernames_vending_pool ON users (time_dispatched ASC) WHERE password IS NOT NULL;
+CREATE INDEX idx_usernames_vending_pool ON users (time_dispatched ASC) WHERE password IS NULL;
