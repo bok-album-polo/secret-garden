@@ -48,7 +48,7 @@ secret_door_fields:
     label: "Upload File"
     html_type: "file"
     help_text: "Upload File"
-    pg_type: "JSONB"
+    pg_type: "BYTEA"
     required: false
 
 # global secret_page_fields

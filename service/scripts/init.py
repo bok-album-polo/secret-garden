@@ -1175,8 +1175,8 @@ def generate_base_usernames_csv(config: Dict[str, Any]) -> None:
     generated = set()
     rows = []
     
-    keyspace = len(adjectives) * len(nouns) * 900
-    print(f"\nGenerating {target_count} usernames (Keyspace: {keyspace} combinations)...")
+    keyspace = len(adjectives) * len(nouns) * (9999 - 10 + 1)
+    print(f"\nGenerating {target_count:,} usernames (Keyspace: {keyspace:,} combinations)...")
     
     attempts = 0
     max_attempts = target_count * 20 
@@ -1186,7 +1186,7 @@ def generate_base_usernames_csv(config: Dict[str, Any]) -> None:
         adj = sysrand.choice(adjectives)
         noun = sysrand.choice(nouns)
         
-        number = sysrand.randint(100, 999)
+        number = sysrand.randint(10, 9999)
         username = f"{adj}{noun}{number}"
         displayname = f"{adj.title()} {noun.title()} {number}"
         
