@@ -4,7 +4,9 @@ Initialization script for the Secret Garden application.
 
 This script:
 1. Validates YAML configuration files against the expected schema.
-2. Clones public-site-source folder
+2. Clones public-site-source and admin-site-source folder
+3. Generates config.php for public sites and admin site
+4. Generates SQL for site setup
 
 Usage:
     python init.py [filename]
