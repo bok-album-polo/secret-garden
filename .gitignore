@@ -11,3 +11,4 @@ init.yaml
 pyproject.toml
 uv.lock
 .venv
+base-usernames.csv
