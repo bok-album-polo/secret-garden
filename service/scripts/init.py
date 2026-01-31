@@ -211,19 +211,36 @@ def load_yaml_file(filepath: Path) -> Dict[str, Any]:
         raise ValueError(f"Invalid YAML syntax: {e}")
 
 
-def validate_config(config: Dict[str, Any], schema: Dict[str, Any]) -> tuple[bool, Optional[str]]:
-    """
-    Validate configuration against the schema.
-    
-    Returns:
-        tuple: (is_valid, error_message)
-    """
+def validate_config(filepath: Path) -> Optional[Dict[str, Any]]:
+    """Loads and validates the configuration file."""
     try:
-        validate(instance=config, schema=schema)
-        return True, None
-    except ValidationError as e:
-        return False, str(e)
+        # Load YAML file
+        config = load_yaml_file(filepath)
+        print("✓ YAML file loaded successfully")
 
+        # 1. Validate against JSON schema directly
+        try:
+            validate(instance=config, schema=CONFIG_SCHEMA)
+            print("✓ Schema validation passed")
+        except ValidationError as e:
+            print(f"✗ Schema validation failed:")
+            print(f"  {str(e)}")
+            return None
+
+        # 2. Validate cross-references
+        is_valid, error_msg = validate_cross_references(config)
+        if not is_valid:
+            print(f"✗ Cross-reference validation failed:")
+            for line in error_msg.split("\n"):
+                print(f"  {line}")
+            return None
+        print("✓ Cross-reference validation passed")
+        print("✓ Configuration is valid!")
+        
+        return config
+    except (FileNotFoundError, ValueError) as e:
+        print(f"✗ Error: {e}")
+        return None
 
 def validate_cross_references(config: Dict[str, Any]) -> tuple[bool, Optional[str]]:
     """
@@ -1248,6 +1265,39 @@ def generate_base_usernames_csv(config: Dict[str, Any]) -> None:
     except Exception as e:
         print(f"  ✗ Error writing base-usernames.csv: {e}")
 
+def discovery_probablity_analysis(config: Dict[str, Any]) -> None:
+    """Computes and displays discovery probability for each public site."""
+    print("\nPK Discovery Probability Analysis:")
+    app_config = config.get("application_config", {})
+    pk_length = app_config.get("pk_length", 0)
+    pk_max_history = app_config.get("pk_max_history", 0)
+    sliding_window = pk_max_history - pk_length + 1
+
+    num_unique_pk_sequences = config.get("project_meta", {}).get("num_unique_pk_sequences", 0)
+    num_public_sites = len(config.get("public_sites", []))
+    
+    if num_public_sites == 0:
+        print("  No public sites found for analysis.")
+        return
+
+    # Calculate sequences per site and store in app_config for later stages
+    num_sequences_per_site = ceil(num_unique_pk_sequences / num_public_sites)
+    app_config['num_sequences_per_site'] = num_sequences_per_site
+
+    for site in config.get("public_sites", []):
+        domain = site.get("domain", "unknown")
+        num_pages_menu = len(site.get("pages_menu", []))
+        num_tripwire = site.get("num_tripwire_menu", 0)
+
+        p_session, p_single, steps = compute_discovery_probabilities(
+            num_pages_menu, num_sequences_per_site, pk_length, sliding_window, num_tripwire)
+
+        print(f"  {domain}:")
+        print(f"    num_pages={num_pages_menu}, num_sequences_per_site={num_sequences_per_site}, num_tripwire={num_tripwire}")
+        print(f"    P_single={num_sequences_per_site}/(({num_pages_menu}-1)^{pk_length})={p_single}")
+        print(f"    sliding_window={sliding_window}")
+        print(f"    P_session={p_session:.8f}")
+
 def main():
     """Main entry point."""
     # Compute repository root (two levels up from this script: /repo_root)
@@ -1283,107 +1333,63 @@ def main():
             print("Initialization aborted by user.")
             return 0
 
-    try:
-        # Load YAML file
-        config = load_yaml_file(filepath)
-        print("✓ YAML file loaded successfully")
-
-        # Validate against schema
-        is_valid, error_msg = validate_config(config, CONFIG_SCHEMA)
-        if not is_valid:
-            print(f"✗ Schema validation failed:")
-            print(f"  {error_msg}")
-            return 1
-        print("✓ Schema validation passed")
-
-        # Validate cross-references
-        is_valid, error_msg = validate_cross_references(config)
-        if not is_valid:
-            print(f"✗ Cross-reference validation failed:")
-            for line in error_msg.split("\n"):
-                print(f"  {line}")
-            return 1
-        print("✓ Cross-reference validation passed")
-        print("✓ Configuration is valid!")
-
-        # Compute and display discovery probability for each public site
-        print("\nPK Discovery Probability Analysis:")
-        app_config = config.get("application_config", {})
-        pk_length = app_config.get("pk_length", 0)
-        pk_max_history = app_config.get("pk_max_history", 0)
-        sliding_window = pk_max_history - pk_length + 1
-
-        num_unique_pk_sequences = config.get("project_meta", {}).get("num_unique_pk_sequences", 0)
-        num_public_sites = len(config.get("public_sites", []))
-        num_sequences_per_site = ceil(num_unique_pk_sequences / num_public_sites)
-        app_config['num_sequences_per_site'] = num_sequences_per_site
-
-        for site in config.get("public_sites", []):
-            domain = site.get("domain", "unknown")
-            num_pages_menu = len(site.get("pages_menu", []))
-
-            num_tripwire = site.get("num_tripwire_menu", 0)
-            p_session, p_single, steps = compute_discovery_probabilities(
-                num_pages_menu, num_sequences_per_site, pk_length, sliding_window, num_tripwire)
-
-            print(f"  {domain}:")
-            print(f"    num_pages={num_pages_menu}, num_sequences_per_site={num_sequences_per_site}, num_tripwire={num_tripwire}")
-            print(f"    P_single={num_sequences_per_site}/(({num_pages_menu}-1)^{pk_length})={p_single}")
-            print(f"    sliding_window={sliding_window}")
-            print(f"    P_session={p_session:.8f}")
-
-        source_dir = repo_root / "public-site-source"
-        clone_public_sites(config, source_dir)
-
-        # Generate per-site `config/config.php` files for public sites
-        generate_public_config_php(config)
-
-        # Clone admin site into build and then generate its `config/config.php`
-        clone_admin_site()
-        generate_admin_config_php(config)
-
-        # Report where generated sites were placed
-        try:
-            print(f"✓ Generated sites available under: {repo_root / 'build'}")
-        except Exception:
-            print("✓ Generated sites created (build location may vary)")
-
-        # Generate PK sequences and export to CSV
-        generate_pk_sequences(config)
-
-        # Generate SQL script for roles
-        generate_sql_01_roles(config)
-
-        # Generate SQL script for tables
-        copy_sql_template("02_tables.sql", "02_tables.sql")
-        generate_sql_02_tables_extensions(config)
-
-        # Copy SQL script for policies
-        copy_sql_template("03_policies.sql", "03_policies.sql")
-
-        # Copy SQL script for functions
-        copy_sql_template("04_functions.sql", "04_functions.sql")
-
-        # Generate SQL script for permissions
-        generate_sql_05_permissions(config)
-
-        # Generate base-usernames.csv if it does not already exist
-        base_usernames_path = BUILD_DIR / "base_usernames.csv"
-        user_provided_base_usernames_path = service_dir / "base-usernames.csv"
-        if not user_provided_base_usernames_path.exists():
-            generate_base_usernames_csv(config)
-        else:
-            print(f"✓ base-usernames.csv already exists at {user_provided_base_usernames_path}, copying into build directory.")
-            shutil.copy(user_provided_base_usernames_path, base_usernames_path)
-
-        # Generate SQL script for seeding data
-        generate_sql_06_data(config)
-
-        return 0
-        
-    except (FileNotFoundError, ValueError) as e:
-        print(f"✗ Error: {e}")
+    # 1. Validation Stage - Calling renamed validate_config
+    config = validate_config(filepath)
+    if not config:
         return 1
+
+    # 2. Analysis Stage - Calling renamed discovery_probablity_analysis
+    discovery_probablity_analysis(config)
+    
+    source_dir = repo_root / "public-site-source"
+    clone_public_sites(config, source_dir)
+
+    # Generate per-site `config/config.php` files for public sites
+    generate_public_config_php(config)
+
+    # Clone admin site into build and then generate its `config/config.php`
+    clone_admin_site()
+    generate_admin_config_php(config)
+
+    # Report where generated sites were placed
+    try:
+        print(f"✓ Generated sites available under: {repo_root / 'build'}")
+    except Exception:
+        print("✓ Generated sites created (build location may vary)")
+
+    # Generate PK sequences and export to CSV
+    generate_pk_sequences(config)
+
+    # Generate SQL script for roles
+    generate_sql_01_roles(config)
+
+    # Generate SQL script for tables
+    copy_sql_template("02_tables.sql", "02_tables.sql")
+    generate_sql_02_tables_extensions(config)
+
+    # Copy SQL script for policies
+    copy_sql_template("03_policies.sql", "03_policies.sql")
+
+    # Copy SQL script for functions
+    copy_sql_template("04_functions.sql", "04_functions.sql")
+
+    # Generate SQL script for permissions
+    generate_sql_05_permissions(config)
+
+    # Generate base-usernames.csv if it does not already exist
+    base_usernames_path = BUILD_DIR / "base_usernames.csv"
+    user_provided_base_usernames_path = service_dir / "base-usernames.csv"
+    if not user_provided_base_usernames_path.exists():
+        generate_base_usernames_csv(config)
+    else:
+        print(f"✓ base-usernames.csv already exists at {user_provided_base_usernames_path}, copying into build directory.")
+        shutil.copy(user_provided_base_usernames_path, base_usernames_path)
+
+    # Generate SQL script for seeding data
+    generate_sql_06_data(config)
+
+    print(f"✓ Initialization complete. Build directory: {BUILD_DIR}")
+    return 0
 
 
 if __name__ == "__main__":
