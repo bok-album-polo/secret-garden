@@ -1,9 +1,13 @@
 /build
 /.vscode
-/.idea
+.idea
 /*.sublime-project
 /*.sublime-workspace
 /*.code-workspace
 !.gitkeep
 config.php
 init.yaml
+.python-version
+pyproject.toml
+uv.lock
+.venv
