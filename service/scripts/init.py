@@ -931,33 +931,52 @@ def generate_sql_05_permissions(config: Dict[str, Any]) -> None:
     out_sql_path = db_dir / '05_permissions.sql'
     
     # Source path for the base SQL template
-    base_sql_path = repo_root / 'service' / 'database' / 'base-05-permissions.sql'
-
-    if not base_sql_path.exists():
-        print(f"  ✗ Error: Base SQL file not found at {base_sql_path}")
-        return
-
-    try:
-        with open(base_sql_path, 'r', encoding='utf-8') as f:
-            base_template = f.read()
-    except Exception as e:
-        print(f"  ✗ Error reading base permissions SQL: {e}")
-        return
+    base_admin_sql_path = repo_root / 'service' / 'database' / 'base-05-permissions-admin.sql'
+    base_public_sql_path = repo_root / 'service' / 'database' / 'base-05-permissions-public.sql'
 
     final_sql_blocks = ["-- Generated Permissions for Secret Garden Users"]
     processed_users = set()
 
-    # Collect all unique users from Admin and Public sites
-    all_sites = [config.get('admin_site', {})] + config.get('public_sites', [])
+    if not base_admin_sql_path.exists():
+        print(f"  ✗ Error: Base SQL file not found at {base_admin_sql_path}")
+        return
 
-    for site in all_sites:
+    try:
+        with open(base_admin_sql_path, 'r', encoding='utf-8') as f:
+            base_admin_sql_template = f.read()
+    except Exception as e:
+        print(f"  ✗ Error reading base permissions SQL: {e}")
+        return
+
+    admin_site = config.get('admin_site', {})
+    creds = admin_site.get('db_credentials', {})
+    user = creds.get('user')
+
+    user_block = base_admin_sql_template.replace("admin-site-user", f'{user}')
+    final_sql_blocks.append(f"\n-- Permissions for role: {user}")
+    final_sql_blocks.append(user_block)
+    processed_users.add(user)
+
+    if not base_public_sql_path.exists():
+        print(f"  ✗ Error: Base SQL file not found at {base_public_sql_path}")
+        return
+
+    try:
+        with open(base_public_sql_path, 'r', encoding='utf-8') as f:
+            base_public_sql_template = f.read()
+    except Exception as e:
+        print(f"  ✗ Error reading base permissions SQL: {e}")
+        return
+
+    # Collect all unique users from Public sites
+    for site in config.get('public_sites', []):
         creds = site.get('db_credentials', {})
         user = creds.get('user')
         
         if user and user not in processed_users:
             # Replace placeholder 'dbuser' with the actual username
             # We use distinct SQL blocks for each user to ensure full coverage
-            user_block = base_template.replace("dbuser", f'"{user}"')
+            user_block = base_public_sql_template.replace("public-site-user", f'{user}')
             final_sql_blocks.append(f"\n-- Permissions for role: {user}")
             final_sql_blocks.append(user_block)
             processed_users.add(user)
