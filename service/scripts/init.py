@@ -57,7 +57,7 @@ CONFIG_SCHEMA = {
                 "num_public_sites": {"type": "integer", "minimum": 1},
                 "num_unique_pk_sequences": {"type": "integer", "minimum": 1},
                 "num_generated_usernames": {"type": "integer", "minimum": 10},
-                "mode": {"type": "string", "enum": ["readonly", "readwrite"]}
+                "mode": {"type": "string", "enum": ["writeonly", "readwrite"]}
             },
             "additionalProperties": False
         },
@@ -920,11 +920,11 @@ def process_permission_template(
     template_path: Path,
     placeholder: str,
     users: List[str],
-    sql_blocks: List[str],
-    processed_users: set
+    sql_blocks: List[str]
 ) -> None:
     """
-    Reads a SQL template, replaces a placeholder with usernames, and appends to the block list.
+    Reads a SQL template, replaces a placeholder with quoted usernames, 
+    and appends to the block list. Note: Deduplication is not handled.
     """
     if not template_path.exists():
         print(f"  ✗ Error: Base SQL file not found at {template_path}")
@@ -938,18 +938,20 @@ def process_permission_template(
         return
 
     for user in users:
-        if user and user not in processed_users:
-            user_block = template_content.replace(placeholder, user)
+        if user:
+            # Wrap the user in double quotes for PostgreSQL identifier safety
+            quoted_user = f'"{user.replace("\"", "\"\"")}"'
+            user_block = template_content.replace(placeholder, quoted_user)
+            
             sql_blocks.append(f"\n-- Permissions for role: {user}")
             sql_blocks.append(user_block)
-            processed_users.add(user)
 
 
 def generate_sql_05_permissions(config: Dict[str, Any]) -> None:
     """
     Generates 05_permissions.sql in build/database.
     Reads base-05-permissions.sql and generates a block of permissions 
-    for EACH unique database user found in the config (admin + public sites).
+    for EACH database user found in the config (admin + public sites).
     """
     global BUILD_DIR, REPO_ROOT
     repo_root = REPO_ROOT if REPO_ROOT is not None else Path(__file__).resolve().parents[2]
@@ -962,9 +964,12 @@ def generate_sql_05_permissions(config: Dict[str, Any]) -> None:
     # Source paths for the base SQL templates
     base_admin_sql_path = repo_root / 'service' / 'database' / 'base-05-permissions-admin.sql'
     base_public_sql_path = repo_root / 'service' / 'database' / 'base-05-permissions-public.sql'
+    base_public_rw_sql_path = repo_root / 'service' / 'database' / 'base-05-permissions-public-readwrite.sql'
 
     final_sql_blocks = ["-- Generated Permissions for Secret Garden Users"]
-    processed_users = set()
+    
+    # Determine operation mode
+    mode = config.get('project_meta', {}).get('mode', 'writeonly')
 
     # 1. Process Admin User
     admin_site = config.get('admin_site', {})
@@ -975,8 +980,7 @@ def generate_sql_05_permissions(config: Dict[str, Any]) -> None:
         template_path=base_admin_sql_path,
         placeholder="admin-site-user",
         users=admin_users_list,
-        sql_blocks=final_sql_blocks,
-        processed_users=processed_users
+        sql_blocks=final_sql_blocks
     )
 
     # 2. Process Public Site Users
@@ -986,13 +990,22 @@ def generate_sql_05_permissions(config: Dict[str, Any]) -> None:
         if user:
             public_users_list.append(user)
 
+    # Apply standard public permissions
     process_permission_template(
         template_path=base_public_sql_path,
         placeholder="public-site-user",
         users=public_users_list,
-        sql_blocks=final_sql_blocks,
-        processed_users=processed_users
+        sql_blocks=final_sql_blocks
     )
+    print(mode)
+    # 3. Apply additional Public Read/Write permissions if mode is readwrite
+    if mode == 'readwrite':
+        process_permission_template(
+            template_path=base_public_rw_sql_path,
+            placeholder="public-site-user",
+            users=public_users_list,
+            sql_blocks=final_sql_blocks
+        )
 
     try:
         with open(out_sql_path, 'w', encoding='utf-8') as f:

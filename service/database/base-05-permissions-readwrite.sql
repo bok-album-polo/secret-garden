@@ -1,1 +1,0 @@
-GRANT EXECUTE ON FUNCTION get_secret_room_submission TO dbuser;
