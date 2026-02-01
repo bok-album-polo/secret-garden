@@ -340,15 +340,15 @@ def compute_discovery_probabilities(num_pages_menu: int,
     p_single = num_sequences_per_site / ((num_pages_menu - 1) ** pk_length)
     p_session = 0.0
     steps = []
+    # base survival probability per step (pages that are not tripwires)
+    base_numer = (num_pages_menu - 1 - (num_tripwire_menu or 0))
+    base_denom = (num_pages_menu - 1)
+    base_survival = base_numer / base_denom if base_denom > 0 else 0
     for step in range(1, sliding_window + 1):
-        # base survival probability per step (pages that are not tripwires)
-        denom = (num_pages_menu - 1)
-        base_numer = (num_pages_menu - 1 - (num_tripwire_menu or 0))
-        base = base_numer / denom if denom > 0 else 0
-        if base <= 0:
+        if base_survival <= 0:
             p_survival = 0.0
         else:
-            p_survival = base ** (step + pk_length - 1)
+            p_survival = base_survival ** (step + pk_length - 1)
         p_step = p_single * p_survival
         steps.append((step, p_survival, p_step))
         p_session += p_step
