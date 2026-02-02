@@ -55,10 +55,10 @@ class Session
         $statement = $db->prepare("SELECT check_ip_ban(?) as is_banned");
         $statement->execute([$_SERVER['REMOTE_ADDR']]);
         $ban_result = $statement->fetch();
-        $ip_ban_result = $ban_result ? $ban_result['is_banned'] : false;
+        $ip_ban = $ban_result ? $ban_result['is_banned'] : false;
 
         // Step 2: Block if already authenticated/banned
-        if ($_SESSION['pk_auth'] || $_SESSION['pk_ban'] || $ip_ban_result) {
+        if ($_SESSION['pk_auth'] || $_SESSION['pk_ban'] || $ip_ban) {
             return;
         }
 
