@@ -8,7 +8,7 @@ if ($environment === 'development'):
     $is_ip_banned = $_SESSION['ip_banned'] ?? false;
     $prettyUrls = $config->project_meta['pretty_urls'] ?? false;
     $secretDoor = $config->routing_secrets['secret_door'] ?? 'contact';
-    $secretPage = $config->routing_secrets['secret_room'] ?? 'registration';
+    $secretRoom = $config->routing_secrets['secret_room'] ?? 'registration';
     $pkLength = $config->application_config['pk_length'] ?? 5;
     $pkMaxHistory = $config->application_config['pk_max_history'] ?? 20;
     $domain = $config->domain ?? 'N/A';
@@ -57,8 +57,8 @@ if ($environment === 'development'):
                 <td><?= htmlspecialchars($secretDoor, ENT_QUOTES, 'UTF-8') ?></td>
             </tr>
             <tr>
-                <td>Secret Page</td>
-                <td><?= htmlspecialchars($secretPage, ENT_QUOTES, 'UTF-8') ?></td>
+                <td>Secret Room</td>
+                <td><?= htmlspecialchars($secretRoom, ENT_QUOTES, 'UTF-8') ?></td>
             </tr>
             <tr>
                 <td>Sequence Length</td>
