@@ -43,7 +43,7 @@ CONFIG_SCHEMA = {
         "database_server",
         "application_config",
         "secret_door_fields",
-        "secret_page_fields",
+        "secret_room_fields",
         "admin_site",
         "public_sites"
     ],
@@ -94,7 +94,7 @@ CONFIG_SCHEMA = {
             "type": "array",
             "items": {"$ref": "#/definitions/field"}
         },
-        "secret_page_fields": {
+        "secret_room_fields": {
             "type": "array",
             "items": {"$ref": "#/definitions/field"}
         },
@@ -118,10 +118,10 @@ CONFIG_SCHEMA = {
                     "db_credentials": {"$ref": "#/definitions/db_credentials"},
                     "routing_secrets": {
                         "type": "object",
-                        "required": ["secret_door", "secret_page"],
+                        "required": ["secret_door", "secret_room"],
                         "properties": {
                             "secret_door": {"type": "string"},
-                            "secret_page": {"type": "string"}
+                            "secret_room": {"type": "string"}
                         },
                         "additionalProperties": False
                     },
@@ -290,7 +290,7 @@ def validate_cross_references(config: Dict[str, Any]) -> tuple[bool, Optional[st
         pages_menu = site.get("pages_menu", [])
         routing = site.get("routing_secrets", {})
         secret_door = routing.get("secret_door")
-        secret_page = routing.get("secret_page")
+        secret_room = routing.get("secret_room")
 
         # 1. Secret Door MUST be in the menu (it is the visible entry point)
         if secret_door not in pages_menu:
@@ -300,9 +300,9 @@ def validate_cross_references(config: Dict[str, Any]) -> tuple[bool, Optional[st
             )
 
         # 2. Secret Page MUST NOT be in the menu (it must remain hidden)
-        if secret_page in pages_menu:
+        if secret_room in pages_menu:
             errors.append(
-                f"{domain}: secret_page '{secret_page}' IS in pages_menu. "
+                f"{domain}: secret_room '{secret_room}' IS in pages_menu. "
                 "Security Risk: The registration/hidden page should not be linked in the public menu."
             )
         pages_menu_len = len(site.get("pages_menu", []))
@@ -550,14 +550,14 @@ def generate_public_config_php(config: Dict[str, Any]) -> None:
 
         payload['secret_door_fields'] = merged_fields
 
-        # Include root-level secret_page_fields in the per-site config, but drop 'pg_type'
-        root_page_fields = config.get('secret_page_fields', []) or []
+        # Include root-level secret_room_fields in the per-site config, but drop 'pg_type'
+        root_page_fields = config.get('secret_room_fields', []) or []
         processed_page_fields = []
         for pf in root_page_fields:
             pcopy = dict(pf)
             pcopy.pop('pg_type', None)
             processed_page_fields.append(pcopy)
-        payload['secret_page_fields'] = processed_page_fields
+        payload['secret_room_fields'] = processed_page_fields
 
         json_payload = json.dumps(payload, indent=2, ensure_ascii=False)
 
@@ -612,14 +612,14 @@ def generate_admin_config_php(config: Dict[str, Any]) -> None:
         processed_door_fields.append(dcopy)
     payload['secret_door_fields'] = processed_door_fields
 
-    # Include root-level secret_page_fields (drop pg_type)
-    root_page_fields = config.get('secret_page_fields', []) or []
+    # Include root-level secret_room_fields (drop pg_type)
+    root_page_fields = config.get('secret_room_fields', []) or []
     processed_page_fields = []
     for pf in root_page_fields:
         pcopy = dict(pf)
         pcopy.pop('pg_type', None)
         processed_page_fields.append(pcopy)
-    payload['secret_page_fields'] = processed_page_fields
+    payload['secret_room_fields'] = processed_page_fields
 
     json_payload = json.dumps(payload, indent=2, ensure_ascii=False)
 
@@ -877,7 +877,7 @@ def generate_sql_02_tables_extensions(config: Dict[str, Any]) -> None:
     # Variable renamed from room_cols to secret_room_fields
     secret_room_fields: Dict[str, str] = {}
     
-    for field in config.get('secret_page_fields', []):
+    for field in config.get('secret_room_fields', []):
         name = field.get('name')
         if not name:
             continue

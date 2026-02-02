@@ -1,4 +1,4 @@
-CREATE OR REPLACE FUNCTION get_pk(
+CREATE OR REPLACE FUNCTION pk_get(
     p_sequence VARCHAR(20) -- Changed from INT to match table definition
 )
 RETURNS SETOF pk_sequences 
@@ -18,8 +18,8 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION dispatch_one_username()
-RETURNS TABLE(r_username VARCHAR, r_displayname VARCHAR, r_time TIMESTAMP WITH TIME ZONE)
+CREATE OR REPLACE FUNCTION user_username_dispatch()
+RETURNS TABLE(r_username VARCHAR, r_displayname VARCHAR, r_time TIMESTAMPTZ)
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public, pg_temp
@@ -41,7 +41,7 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION get_user(
+CREATE OR REPLACE FUNCTION user_get(
     p_username TEXT
 )
 RETURNS SETOF users 
@@ -58,7 +58,7 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION activate_user(
+CREATE OR REPLACE FUNCTION user_activate(
     p_username VARCHAR,
     p_password VARCHAR,
     p_pk_sequence VARCHAR
@@ -84,7 +84,41 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION check_ip_ban(
+CREATE OR REPLACE FUNCTION ip_ban_ban(
+    p_ip_address INET,
+    p_reason TEXT,
+    p_risk_score INT DEFAULT NULL,
+    p_expires_at TIMESTAMPTZ DEFAULT NULL
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+    INSERT INTO ip_bans (
+        ip_address,
+        netblock,
+        reason,
+        risk_score,
+        expires_at,
+        domain
+    )
+    VALUES (
+        p_ip_address,
+        CASE
+            WHEN family(p_ip_address) = 4 THEN set_masklen(p_ip_address, 24)::cidr
+            ELSE set_masklen(p_ip_address, 48)::cidr
+        END,
+        p_reason,
+        p_risk_score,
+        p_expires_at,
+        SESSION_USER
+    );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION ip_ban_check(
 	p_ip INET
 )
 RETURNS BOOLEAN
@@ -96,8 +130,72 @@ BEGIN
 	RETURN EXISTS (
 		SELECT 1
 		FROM ip_bans
-		WHERE network >>= p_ip
+		WHERE ip_address = p_ip
 		  AND (expires_at IS NULL OR expires_at > NOW())
 	);
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION unauthenticated_session_insert(
+    p_ip_address INET,
+    p_user_agent_id INT,
+    p_session_id_hash VARCHAR
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+    v_count INT;
+BEGIN
+    -- 1. Rate Limit Check
+    -- Count sessions from this IP in the last 5 hours
+    SELECT COUNT(*) INTO v_count
+    FROM unauthenticated_sessions
+    WHERE ip_address = p_ip_address
+      AND created_at > (NOW() - INTERVAL '5 hours');
+
+    -- If limit exceeded: BAN the IP and return FALSE
+    IF v_count >= 5 THEN
+        PERFORM ip_ban_ban(
+            p_ip_address,
+            '> 5 unauthenticated sessions', -- Reason
+            1,                              -- Risk Score
+            NOW() + INTERVAL '24 hours'     -- Expires in 24h
+        );
+        RETURN FALSE;
+    END IF;
+
+    -- 2. Insert Record (Success path only)
+    INSERT INTO unauthenticated_sessions (
+        ip_address,
+        user_agent_id,
+        session_id_hash,
+        domain
+    )
+    VALUES (
+        p_ip_address,
+        p_user_agent_id,
+        p_session_id_hash,
+        SESSION_USER
+    );
+
+    RETURN TRUE;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION unauthenticated_session_delete(
+    p_session_id_hash VARCHAR
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+    DELETE FROM unauthenticated_sessions
+    WHERE session_id_hash = p_session_id_hash
+      AND domain = SESSION_USER; -- Scope deletion to the current tenant/domain
 END;
 $$;

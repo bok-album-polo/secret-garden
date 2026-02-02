@@ -2,7 +2,7 @@
 -- Description: Retrieves the most recent secret room submission for a given username, ensuring domain security.
 -- Used in readwrite mode to allow users to view their own submissions (vs writeonly mode where they cannot).
 
-CREATE OR REPLACE FUNCTION get_secret_room_submission(
+CREATE OR REPLACE FUNCTION secret_room_submission_get(
     p_username VARCHAR
 )
 RETURNS SETOF secret_room_submissions

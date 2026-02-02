@@ -3,6 +3,7 @@ REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM admin-site-user;
 REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM admin-site-user;
 
 GRANT SELECT ON TABLE 
+    user_agents,
     secret_door_submissions, 
     secret_room_submissions, 
     ip_bans 
