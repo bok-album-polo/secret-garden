@@ -3,9 +3,9 @@ $config = \App\Config::instance();
 $environment = $config->project_meta['environment'] ?? 'production';
 
 if ($environment === 'development'):
-    $pk_auth = $_SESSION['pk_auth'] ?? false;
+    $pk_auth = $_SESSION['pk_authed'] ?? false;
     $is_pk_banned = $_SESSION['pk_ban'] ?? false;
-    $is_ip_banned = $_SESSION['ip_ban'] ?? false;
+    $is_ip_banned = $_SESSION['ip_banned'] ?? false;
     $prettyUrls = $config->project_meta['pretty_urls'] ?? false;
     $secretDoor = $config->routing_secrets['secret_door'] ?? 'contact';
     $secretPage = $config->routing_secrets['secret_page'] ?? 'registration';
