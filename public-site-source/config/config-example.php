@@ -15,7 +15,7 @@ define('GENERATED_PASSWORD_LENGTH', 10);
 define('GENERATED_PASSWORD_ALGORITHM', PASSWORD_ARGON2ID); //
 
 define('SECRET_DOOR', 'contact-us');
-define('SECRET_PAGE', 'registration');
+define('secret_room', 'registration');
 
 $pages = [
     'home' => 0,
