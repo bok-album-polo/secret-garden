@@ -1079,7 +1079,7 @@ def generate_sql_05_permissions(config: Dict[str, Any]) -> None:
     
     # Source paths for the base SQL templates
     base_admin_sql_path = repo_root / 'service' / 'database' / 'base-05-permissions-admin.sql'
-    base_public_sql_path = repo_root / 'service' / 'database' / 'base-05-permissions-public.sql'
+    base_public_sql_path = repo_root / 'service' / 'database' / 'base-05-permissions-public-writeonly.sql'
     base_public_rw_sql_path = repo_root / 'service' / 'database' / 'base-05-permissions-public-readwrite.sql'
 
     final_sql_blocks = ["-- Generated Permissions for Secret Garden Users"]
@@ -1400,7 +1400,7 @@ def discovery_probablity_analysis(config: Dict[str, Any]) -> None:
 def copy_public_site_example_pages(config: Dict[str, Any]) -> None:
     """
     Recursively copies example pages from service/public-site-example-pages/ 
-    into src/Views/ using shutil.copytree.
+    into views/ using shutil.copytree.
     """
     global BUILD_DIR, REPO_ROOT
     repo_root = REPO_ROOT if REPO_ROOT is not None else (BUILD_DIR.parent if BUILD_DIR is not None else Path(__file__).resolve().parents[2])
@@ -1418,7 +1418,7 @@ def copy_public_site_example_pages(config: Dict[str, Any]) -> None:
         domain = site.get("domain", f"site{idx}")
         safe = re.sub(r'[^A-Za-z0-9._-]+', '-', domain).strip('-').lower()
         site_dir = build_dir / f"{idx:02d}-{safe}"
-        dest_views_dir = site_dir / 'src' / 'Views'
+        dest_views_dir = site_dir / 'views'
         
         try:
             shutil.copytree(source_example_pages, dest_views_dir, dirs_exist_ok=True)
