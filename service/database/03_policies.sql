@@ -10,6 +10,8 @@ CREATE POLICY domain_isolation_secret_door
 ALTER TABLE secret_room_submissions
 	ENABLE ROW LEVEL SECURITY
 ;
+
+--- do we need the domain column in secret_room_submissions
 CREATE POLICY
 	domain_isolation_secret_room ON secret_room_submissions
 	FOR ALL USING (domain = CURRENT_USER)
