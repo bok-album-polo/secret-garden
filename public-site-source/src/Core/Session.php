@@ -37,7 +37,7 @@ class Session
             $_SESSION['session_exists'] = true;
             $_SESSION['pk_history'] = [];
             $_SESSION['pk_ban'] = false;
-            $_SESSION['pk_auth'] = false;
+            $_SESSION['pk_authed'] = false;
         }
     }
 
@@ -62,7 +62,7 @@ class Session
 
     public static function isAuthenticated(): bool
     {
-        return $_SESSION['pk_auth'] ?? false;
+        return $_SESSION['pk_authed'] ?? false;
     }
 
     public static function runAuthenticationSequence(): void
@@ -76,14 +76,14 @@ class Session
             $statement->execute([$_SERVER['REMOTE_ADDR']]);
             $ban_result = $statement->fetch(PDO::FETCH_ASSOC);
             $ip_ban_result = $ban_result && $ban_result['is_banned'];
-            $_SESSION['ip_ban'] = $ip_ban_result;
+            $_SESSION['ip_banned'] = $ip_ban_result;
         } catch (PDOException $e) {
             error_log("IP ban check failed: " . $e->getMessage());
             return;
         }
 
         // Step 2: Block if already authenticated/banned
-        if ($_SESSION['pk_auth'] || $_SESSION['pk_ban'] || $ip_ban_result) {
+        if ($_SESSION['pk_authed'] || $_SESSION['pk_ban'] || $ip_ban_result) {
             return;
         }
 
@@ -130,7 +130,7 @@ class Session
 
             if ($result && $result['is_valid']) {
                 session_regenerate_id(true);
-                $_SESSION['pk_auth'] = true;
+                $_SESSION['pk_authed'] = true;
 
                 $secretDoor = $config->routing_secrets['secret_door'] ?? 'contact';
                 $route = $prettyUrls
