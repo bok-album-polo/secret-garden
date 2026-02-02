@@ -11,7 +11,7 @@
 $config = \App\Config::instance();
 $prettyUrls = $config->project_meta['pretty_urls'] ?? false;
 $environment = $config->project_meta['environment'] ?? 'production';
-$secretPage = $config->routing_secrets['secret_room'] ?? 'registration';
+$secretRoom = $config->routing_secrets['secret_room'] ?? 'registration';
 $pagesMenu = $config->pages_menu ?? [];
 ?>
 
@@ -21,7 +21,7 @@ $pagesMenu = $config->pages_menu ?? [];
     <nav>
         <ul>
             <?php foreach ($pagesMenu as $index => $slug): ?>
-                <?php if ($slug === $secretPage) continue; ?>
+                <?php if ($slug === $secretRoom) continue; ?>
                 <li>
                     <?php if ($prettyUrls): ?>
                     <a href="/<?= htmlspecialchars($slug, ENT_QUOTES, 'UTF-8') ?>">
