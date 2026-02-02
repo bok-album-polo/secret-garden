@@ -447,7 +447,7 @@ def clone_admin_site() -> Optional[Path]:
 
 def generate_public_config_php(config: Dict[str, Any]) -> None:
     """
-    Generate a `config/Config.php` file for each generated public site.
+    Generate a `controllers/Config.php` file for each generated public site.
 
     The PHP file defines an immutable `Config` class in the App namespace where all values are
     hardcoded directly into the constructor as native PHP types using the singleton pattern.
@@ -489,7 +489,7 @@ def generate_public_config_php(config: Dict[str, Any]) -> None:
             print(f"Warning: generated site directory not found for {domain}: {site_dir}")
             continue
 
-        cfg_dir = site_dir / 'config'
+        cfg_dir = site_dir / 'controllers'
         cfg_dir.mkdir(parents=True, exist_ok=True)
         cfg_path = cfg_dir / 'Config.php'
 
