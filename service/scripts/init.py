@@ -644,7 +644,7 @@ def generate_public_config_php(config: Dict[str, Any]) -> None:
         php_content = f"""<?php
 // Generated Immutable Configuration for {domain}
 
-namespace App;
+namespace App\Controllers;
 
 final class Config {{
 {props_block}
