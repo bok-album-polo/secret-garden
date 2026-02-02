@@ -11,7 +11,7 @@
 $config = \App\Config::instance();
 $prettyUrls = $config->project_meta['pretty_urls'] ?? false;
 $environment = $config->project_meta['environment'] ?? 'production';
-$secretPage = $config->routing_secrets['secret_page'] ?? 'registration';
+$secretPage = $config->routing_secrets['secret_room'] ?? 'registration';
 $pagesMenu = $config->pages_menu ?? [];
 ?>
 
