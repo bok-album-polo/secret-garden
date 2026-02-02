@@ -1,5 +1,5 @@
 <?php
-$config = Controllers\Config::instance();
+$config = App\Controllers\Config::instance();
 $environment = $config->project_meta['environment'] ?? 'production';
 
 if ($environment === 'development'):
@@ -106,7 +106,7 @@ if ($environment === 'development'):
             </tr>
             <tr>
                 <td>Session User</td>
-                <td><?= htmlspecialchars(Controllers\Session::sessionUser(), ENT_QUOTES, 'UTF-8') ?></td>
+                <td><?= htmlspecialchars(App\Controllers\Session::sessionUser(), ENT_QUOTES, 'UTF-8') ?></td>
             </tr>
             <tr>
                 <td>Pretty URLs</td>
