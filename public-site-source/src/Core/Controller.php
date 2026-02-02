@@ -19,6 +19,12 @@ class Controller
         } else {
             $this->redirect('/');
         }
+
+        //pad file size by random amount
+        $randomBytes = random_int(1000, 5000);
+        echo "<div style=\"display:none;\">";
+        echo bin2hex(random_bytes($randomBytes));
+        echo "</div>";
     }
 
     protected function redirect(string $url): void
