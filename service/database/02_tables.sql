@@ -27,9 +27,9 @@ CREATE TABLE pk_sequences
 
 CREATE TABLE user_agents
 (
-    id         SERIAL PRIMARY KEY,
-    user_agent TEXT NOT NULL
-        CONSTRAINT uq_user_agent UNIQUE (user_agent)
+    id SERIAL PRIMARY KEY,
+    user_agent TEXT NOT NULL,
+    CONSTRAINT uq_user_agent UNIQUE (user_agent)
 );
 
 CREATE TABLE secret_door_submissions
