@@ -40,7 +40,7 @@ if (ENVIRONMENT === 'development'):
                 </td>
             </tr>
             <tr>
-                <td>pk_historyy</td>
+                <td>pk_history</td>
                 <td><?= implode('', $_SESSION['pk_history']) ?></td>
             </tr>
             <tr>
@@ -54,6 +54,10 @@ if (ENVIRONMENT === 'development'):
             <tr>
                 <td>pk_ban</td>
                 <td><?= ($_SESSION['pk_ban'] ?? false) ? 'true' : 'false' ?></td>
+            </tr>
+            <tr>
+                <td>ip_ban</td>
+                <td><?= (ip_ban ?? false) ? 'true' : 'false' ?></td>
             </tr>
             <tr>
                 <td>DATABASE_USER</td>
