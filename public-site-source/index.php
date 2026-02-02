@@ -20,6 +20,7 @@ $config = Config::instance();
 $prettyUrls = $config->project_meta['pretty_urls'] ?? false;
 $secretDoor = $config->routing_secrets['secret_door'];
 $secretRoom = $config->routing_secrets['secret_room'];
+$environment = $config->project_meta['environment'] ?? 'production';
 
 if ($prettyUrls) {
     $uri = trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
@@ -37,7 +38,12 @@ if ($page === $secretDoor) {
         $controller = new SecretDoorController();
     }
     $controller->index();
+} elseif ($page == 'pk-reset' && $environment=='development') {
+    Session::logout();
+    header("Location: /");
+    exit;
 } else {
+
     $controller = new GenericPageController();
     $controller->show($page);
 }
