@@ -20,7 +20,7 @@ $config = Config::instance();
 // Resolve current page/route
 $prettyUrls = $config->project_meta['pretty_urls'] ?? false;
 $secretDoor = $config->routing_secrets['secret_door'];
-$secretPage = $config->routing_secrets['secret_page'];
+$secretPage = $config->routing_secrets['secret_room'];
 
 if ($prettyUrls) {
     $uri = trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
