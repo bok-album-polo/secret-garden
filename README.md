@@ -25,14 +25,19 @@ This architectural choice creates a protective "Safe Harbor." It manifests only 
 ```mermaid
 flowchart TD
     %% Entry Point
-    Start[GET request] --> Guard{pk_auth or pk_banned or ip_banned}
+    Start[GET request] --> PK_Guard{pk_authed}
 
     %% Main Logic Flow
-    Guard -->|Not Authenticated| UpdateHistory(Add page to $pk_history)
-    UpdateHistory --> Tripwire{tripwire?}
+    PK_Guard -->|false| IP_Guard1(IP Ban Database Query)
+    IP_Guard1 --> IP_Guard2{ip_banned}
+    IP_Guard2 --> |false| CheckUnAuthSessions{Unauth Sessions >= 5}
+    CheckUnAuthSessions --> |true|SetBanned
+    CheckUnAuthSessions --> |false|UpdateHistory
+    UpdateHistory(Add page to $pk_history)
+    UpdateHistory --> Tripwire{tripwire}
     
     %% Tripwire & Sequence Logic
-    Tripwire -->|True| SetBanned($pk_banned = true)
+    Tripwire -->|True| SetBanned($ip_banned = true)
     Tripwire -->|False| LengthCheck{count $pk_history > $pk_length}
     
     LengthCheck -->|True| Extract(Extract $pk_length elements into $pk_sequence)
@@ -43,7 +48,8 @@ flowchart TD
     MaxCheck -->|True| SetBanned
     
     %% Decision Gate
-    Guard -->|Already Authenticated/Banned| DoorCheck
+    PK_Guard -->|true| DoorCheck
+    IP_Guard2 -->|true| DoorCheck
     SetAuth --> DoorCheck
     SetBanned --> DoorCheck
     MaxCheck -->|False| DoorCheck
@@ -57,7 +63,10 @@ flowchart TD
 
     %% Styling for clarity
     subgraph Auth_Sequence [Authentication Sequence]
-        Guard
+        PK_Guard
+        IP_Guard1
+        IP_Guard2
+        CheckUnAuthSessions
         UpdateHistory
         Tripwire
         LengthCheck
