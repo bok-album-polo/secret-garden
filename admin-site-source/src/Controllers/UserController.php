@@ -2,9 +2,9 @@
 
 namespace App\Controllers;
 
-use App\Core\Controller;
-use App\Models\User;
 use App\Core\Role;
+use App\Models\User;
+use Controllers\Controller;
 
 class UserController extends Controller
 {
@@ -18,7 +18,7 @@ class UserController extends Controller
 
     public function index()
     {
-        // Require at least ADMIN to view a user list
+        // Require at least ADMIN to views a user list
         $userRoles = $_SESSION['roles'] ?? [Role::USER];
         if (!Role::hasPermission($userRoles, Role::ADMIN)) {
             exit;

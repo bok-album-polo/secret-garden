@@ -2,7 +2,7 @@
 
 namespace App\Core;
 
-use App\Core\Database;
+use Controllers\Database;
 use PDO;
 
 class Role

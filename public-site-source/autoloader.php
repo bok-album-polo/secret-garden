@@ -6,8 +6,7 @@ spl_autoload_register(function ($class) {
 
     // Base directories to search
     $baseDirs = [
-        __DIR__ . '/../src/',
-        __DIR__ . '/../config/'  // add your second directory
+        __DIR__ . '/',
     ];
 
     // Does the class use the namespace prefix?

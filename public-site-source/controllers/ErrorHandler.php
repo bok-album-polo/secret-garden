@@ -1,8 +1,7 @@
 <?php
 
-namespace App\Core;
+namespace App\Controllers;
 
-use App\Config;
 use Throwable;
 
 class ErrorHandler
@@ -103,7 +102,7 @@ class ErrorHandler
             http_response_code(500);
         }
 
-        $errorViewPath = __DIR__ . '/../Views/pages/error.php';
+        $errorViewPath = __DIR__ . '/../views/pages/error.php';
 
         if (file_exists($errorViewPath)) {
             require $errorViewPath;

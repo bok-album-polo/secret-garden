@@ -2,8 +2,8 @@
 
 namespace App\Controllers;
 
-use App\Core\Controller;
 use App\Models\Registration;
+use Controllers\Controller;
 
 class RegistrationController extends Controller
 {

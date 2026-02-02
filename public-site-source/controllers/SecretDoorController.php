@@ -2,9 +2,6 @@
 
 namespace App\Controllers;
 
-use App\Config;
-use App\Core\Controller;
-use App\Core\Database;
 use PDO;
 use PDOException;
 use RuntimeException;

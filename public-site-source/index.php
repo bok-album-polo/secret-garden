@@ -1,13 +1,12 @@
 <?php
 
-use App\Core\ErrorHandler;
-use App\Core\Session;
+use App\Controllers\Config;
+use App\Controllers\GenericPageController;
 use App\Controllers\SecretDoorController;
 use App\Controllers\SecretRoomController;
-use App\Controllers\GenericPageController;
-use App\Config;
+use App\Controllers\Session;
 
-require_once __DIR__ . '/src/autoloader.php';
+require_once __DIR__ . '/autoloader.php';
 
 // Initialize core services
 //ErrorHandler::initialize();
@@ -28,6 +27,7 @@ if ($prettyUrls) {
 } else {
     $page = $_GET['page'] ?? 'home';
 }
+
 
 // Route handling
 if ($page === $secretDoor) {

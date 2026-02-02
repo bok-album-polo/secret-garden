@@ -14,7 +14,7 @@ $router = new Router();
 $router->add('login', AuthController::class, 'showLogin');
 $router->add('logout', AuthController::class, 'logout');
 $router->add('dashboard', RegistrationController::class, 'index');
-$router->add('view_registration', RegistrationController::class, 'view');
+$router->add('view_registration', RegistrationController::class, 'views');
 $router->add('edit_registration', RegistrationController::class, 'edit');
 $router->add('authenticate', RegistrationController::class, 'authenticate');
 

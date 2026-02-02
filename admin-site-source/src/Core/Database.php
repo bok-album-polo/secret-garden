@@ -7,7 +7,7 @@ use PDOException;
 
 class Database
 {
-    private static ?Database $instance = null;
+    private static ?\Controllers\Database $instance = null;
     private $pdo;
 
     private function __construct()
@@ -30,7 +30,7 @@ class Database
         }
     }
 
-    public static function getInstance(): ?Database
+    public static function getInstance(): ?\Controllers\Database
     {
         if (self::$instance === null) {
             self::$instance = new self();

@@ -8,7 +8,7 @@
 <body>
 
 <?php
-$config = \App\Config::instance();
+$config = Controllers\Config::instance();
 $prettyUrls = $config->project_meta['pretty_urls'] ?? false;
 $environment = $config->project_meta['environment'] ?? 'production';
 $secretRoom = $config->routing_secrets['secret_room'] ?? 'registration';

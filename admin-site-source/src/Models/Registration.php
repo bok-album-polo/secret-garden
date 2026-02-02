@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use App\Core\Database;
+use Controllers\Database;
 use PDO;
 
 class Registration

@@ -8,7 +8,7 @@ class Controller
     {
         extract($data);
         
-        $viewFile = __DIR__ . "/../Views/{$view}.php";
+        $viewFile = __DIR__ . "/../views/{$view}.php";
         if (file_exists($viewFile)) {
             require __DIR__ . "/../Views/layout/template.php";
         } else {

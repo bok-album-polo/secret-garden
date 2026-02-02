@@ -2,10 +2,6 @@
 
 namespace App\Controllers;
 
-use App\Config;
-use App\Core\Controller;
-use App\Core\Database;
-use App\Core\Session;
 use App\Models\UserNamePool;
 use PDO;
 use PDOException;

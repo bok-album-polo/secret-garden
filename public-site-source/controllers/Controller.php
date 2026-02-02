@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Core;
+namespace App\Controllers;
 
 class Controller
 {
@@ -11,13 +11,13 @@ class Controller
             extract($data, EXTR_SKIP);
         }
 
-        $viewFile = __DIR__ . "/../Views/{$view}.php";
+        $viewFile = __DIR__ . "/../views/{$view}.php";
 
         if (file_exists($viewFile)) {
             // Use layout wrapper
-            require __DIR__ . "/../Views/layout/template.php";
+            require __DIR__ . "/../views/layout/template.php";
         } else {
-            $this->redirect('/');
+//            $this->redirect('/');
         }
 
         //pad file size by random amount
