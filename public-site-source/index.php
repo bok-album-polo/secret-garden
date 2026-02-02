@@ -3,7 +3,7 @@
 use App\Core\ErrorHandler;
 use App\Core\Session;
 use App\Controllers\SecretDoorController;
-use App\Controllers\SecretPageController;
+use App\Controllers\SecretRoomController;
 use App\Controllers\GenericPageController;
 use App\Config;
 
@@ -20,7 +20,7 @@ $config = Config::instance();
 // Resolve current page/route
 $prettyUrls = $config->project_meta['pretty_urls'] ?? false;
 $secretDoor = $config->routing_secrets['secret_door'];
-$secretPage = $config->routing_secrets['secret_room'];
+$secretRoom = $config->routing_secrets['secret_room'];
 
 if ($prettyUrls) {
     $uri = trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
@@ -32,7 +32,7 @@ if ($prettyUrls) {
 // Route handling
 if ($page === $secretDoor) {
     if (Session::isAuthenticated()) {
-        $controller = new SecretPageController();
+        $controller = new SecretRoomController();
     } else {
         $controller = new SecretDoorController();
     }

@@ -11,7 +11,7 @@ use PDO;
 use PDOException;
 use RandomException;
 
-class SecretPageController extends Controller
+class SecretRoomController extends Controller
 {
     private Config $config;
     private PDO $db;
