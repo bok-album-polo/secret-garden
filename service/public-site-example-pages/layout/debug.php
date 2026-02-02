@@ -1,7 +1,18 @@
 <?php
-if (ENVIRONMENT === 'development'):
+$config = \App\Config::instance();
+$environment = $config->project_meta['environment'] ?? 'production';
+
+if ($environment === 'development'):
     $pk_auth = $_SESSION['pk_auth'] ?? false;
-    $pk_ban = $_SESSION['pk_ban'] ?? false;
+    $is_pk_banned = $_SESSION['pk_ban'] ?? false;
+    $is_ip_banned = $_SESSION['ip_ban'] ?? false;
+    $prettyUrls = $config->project_meta['pretty_urls'] ?? false;
+    $secretDoor = $config->routing_secrets['secret_door'] ?? 'contact';
+    $secretPage = $config->routing_secrets['secret_page'] ?? 'registration';
+    $pkLength = $config->application_config['pk_length'] ?? 5;
+    $pkMaxHistory = $config->application_config['pk_max_history'] ?? 20;
+    $domain = $config->domain ?? 'N/A';
+    $dbUser = $config->db_credentials['user'] ?? 'N/A';
     ?>
     <style>
         #debug-panel {
@@ -34,66 +45,76 @@ if (ENVIRONMENT === 'development'):
                 <th>Value</th>
             </tr>
             <tr>
-                <td>pk_sequence</td>
+                <td>Domain</td>
+                <td><?= htmlspecialchars($domain, ENT_QUOTES, 'UTF-8') ?></td>
+            </tr>
+            <tr>
+                <td>Database User</td>
+                <td><?= htmlspecialchars($dbUser, ENT_QUOTES, 'UTF-8') ?></td>
+            </tr>
+            <tr>
+                <td>Secret Door</td>
+                <td><?= htmlspecialchars($secretDoor, ENT_QUOTES, 'UTF-8') ?></td>
+            </tr>
+            <tr>
+                <td>Secret Page</td>
+                <td><?= htmlspecialchars($secretPage, ENT_QUOTES, 'UTF-8') ?></td>
+            </tr>
+            <tr>
+                <td>Sequence Length</td>
+                <td><?= $pkLength ?></td>
+            </tr>
+            <tr>
+                <td>PK History</td>
+                <td><?= htmlspecialchars(implode('', $_SESSION['pk_history'] ?? []), ENT_QUOTES, 'UTF-8') ?></td>
+            </tr>
+            <tr>
+                <td>PK Max History</td>
+                <td><?= $pkMaxHistory ?></td>
+            </tr>
+            <tr>
+                <td>PK History Length</td>
+                <td><?= count($_SESSION['pk_history'] ?? []) ?></td>
+            </tr>
+            <tr>
+                <td>PK Banned</td>
+                <td><?= $is_pk_banned ? 'YES' : 'NO' ?></td>
+            </tr>
+            <tr>
+                <td>PK Sequence</td>
                 <td>
-                    <?= $_SESSION['pk_sequence'] ?>
+                    <?= htmlspecialchars(
+                            $pk_auth
+                                    ? ($_SESSION['pk_sequence'] ?? 'N/A')
+                                    : implode('', array_slice($_SESSION['pk_history'] ?? [], -$pkLength)),
+                            ENT_QUOTES,
+                            'UTF-8'
+                    ) ?>
                 </td>
             </tr>
             <tr>
-                <td>pk_history</td>
-                <td><?= implode('', $_SESSION['pk_history']) ?></td>
-            </tr>
-            <tr>
-                <td>count($_SESSION['pk_history'])</td>
-                <td><?= count($_SESSION['pk_history']) ?></td>
-            </tr>
-            <tr>
-                <td>$pk_auth</td>
-                <td><?= $pk_auth ? 'true' : 'false' ?></td>
-            </tr>
-            <tr>
-                <td>pk_ban</td>
-                <td><?= ($_SESSION['pk_ban'] ?? false) ? 'true' : 'false' ?></td>
-            </tr>
-            <tr>
-                <td>ip_ban</td>
-                <td><?= (ip_ban ?? false) ? 'true' : 'false' ?></td>
-            </tr>
-            <tr>
-                <td>DATABASE_USER</td>
-                <td><?= DATABASE_USER ?></td>
-            </tr>
-            <tr>
-                <td>SECRET_DOOR</td>
-                <td><?= SECRET_DOOR ?></td>
-            </tr>
-            <tr>
-                <td>SECRET_PAGE</td>
-                <td><?= SECRET_PAGE ?></td>
-            </tr>
-            <tr>
-                <td>PK_LENGTH</td>
-                <td><?= PK_LENGTH ?></td>
-            </tr>
-            <tr>
-                <td>PK_MAX_HISTORY</td>
-                <td><?= PK_MAX_HISTORY ?></td>
-            </tr>
-            <tr>
                 <td>IP Address</td>
-                <td><?= $_SERVER['REMOTE_ADDR'] ?></td>
+                <td><?= htmlspecialchars($_SERVER['REMOTE_ADDR'], ENT_QUOTES, 'UTF-8') ?></td>
             </tr>
             <tr>
-                <td>SessionUser</td>
-                <td><?= App\Core\Session::sessionUser() ?></td>
+                <td>IP Banned</td>
+                <td><?= $is_ip_banned ? 'YES' : 'NO' ?></td>
+            </tr>
+            <tr>
+                <td>Authenticated</td>
+                <td><?= $pk_auth ? 'YES' : 'NO' ?></td>
+            </tr>
+            <tr>
+                <td>Session User</td>
+                <td><?= htmlspecialchars(\App\Core\Session::sessionUser(), ENT_QUOTES, 'UTF-8') ?></td>
+            </tr>
+            <tr>
+                <td>Pretty URLs</td>
+                <td><?= $prettyUrls ? 'YES' : 'NO' ?></td>
             </tr>
         </table>
 
-
-        <?php
-        $logoutUrl = ENABLE_PRETTY_URLS ? '/pk-reset' : '?page=pk-reset';
-        ?>
-        <p><a href="<?= $logoutUrl ?>"><b>Restart my Session</b></a></p>
-
+        <?php $logoutUrl = $prettyUrls ? '/pk-reset' : '?page=pk-reset'; ?>
+        <p><a href="<?= htmlspecialchars($logoutUrl, ENT_QUOTES, 'UTF-8') ?>"><b>Restart my Session</b></a></p>
     </div>
 <?php endif; ?>

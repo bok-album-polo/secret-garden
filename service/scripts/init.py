@@ -59,7 +59,7 @@ CONFIG_SCHEMA = {
                 "num_generated_usernames": {"type": "integer", "minimum": 10},
                 "mode": {"type": "string", "enum": ["writeonly", "readwrite"]}
             },
-            "additionalProperties": False
+            "additionalProperties": True
         },
         "database_server": {
             "type": "object",
@@ -446,13 +446,39 @@ def clone_admin_site() -> Optional[Path]:
 
 
 def generate_public_config_php(config: Dict[str, Any]) -> None:
-    """Generate a `config/config.php` file for each generated public site.
+    """
+    Generate a `config/Config.php` file for each generated public site.
 
-    The PHP file will set `$config` to the decoded JSON for that domain's configuration.
+    The PHP file defines an immutable `Config` class in the App namespace where all values are
+    hardcoded directly into the constructor as native PHP types using the singleton pattern.
     """
     global BUILD_DIR, REPO_ROOT
-    repo_root = REPO_ROOT if REPO_ROOT is not None else (BUILD_DIR.parent if BUILD_DIR is not None else Path(__file__).resolve().parents[2])
+    repo_root = REPO_ROOT if REPO_ROOT is not None else (
+        BUILD_DIR.parent if BUILD_DIR is not None else Path(__file__).resolve().parents[2])
     build_dir = BUILD_DIR if BUILD_DIR is not None else (repo_root / 'build')
+
+    def to_php_val(val: Any, indent_level: int = 2) -> str:
+        """Recursive helper to convert Python types to formatted PHP syntax."""
+        indent = "    " * indent_level
+        if val is None:
+            return "null"
+        elif isinstance(val, bool):
+            return "true" if val else "false"
+        elif isinstance(val, (int, float)):
+            return str(val)
+        elif isinstance(val, str):
+            # Escape single quotes and backslashes
+            safe_str = val.replace("\\", "\\\\").replace("'", "\\'")
+            return f"'{safe_str}'"
+        elif isinstance(val, list):
+            if not val: return "[]"
+            lines = [f"{indent}    {to_php_val(item, indent_level + 1)}" for item in val]
+            return "[\n" + ",\n".join(lines) + f"\n{indent}]"
+        elif isinstance(val, dict):
+            if not val: return "[]"
+            lines = [f"{indent}    '{k}' => {to_php_val(v, indent_level + 1)}" for k, v in val.items()]
+            return "[\n" + ",\n".join(lines) + f"\n{indent}]"
+        return "'UNKNOWN_TYPE'"
 
     for idx, site in enumerate(config.get("public_sites", []), start=1):
         domain = site.get("domain", f"site{idx}")
@@ -465,30 +491,59 @@ def generate_public_config_php(config: Dict[str, Any]) -> None:
 
         cfg_dir = site_dir / 'config'
         cfg_dir.mkdir(parents=True, exist_ok=True)
-        cfg_path = cfg_dir / 'config.php'
+        cfg_path = cfg_dir / 'Config.php'
 
-        # Prepare JSON payload: merge site config with selected project_meta and application_config fields
+        # --- 1. Prepare Payload (Business Logic) ---
         payload = dict(site)  # shallow copy of the site-specific config
 
         # Remove num_tripwire_menu from export (we'll generate tripwire_pages instead)
         num_tripwire = payload.pop('num_tripwire_menu', 0) or 0
         payload.pop('supplemental_tripwire_pages', None)
 
-        # Add selected project_meta fields
-        project_meta = config.get('project_meta', {})
-        payload['project_meta'] = {
-            'environment': project_meta.get('environment'),
-            'mode': project_meta.get('mode')
+        # Merge database_server settings (allow site-specific overrides)
+        db_server = config.get('database_server', {})
+        site_db_server = site.get('database_server', {})
+        payload['database_server'] = {
+            'host': site_db_server.get('host') or db_server.get('host', '127.0.0.1'),
+            'port': site_db_server.get('port') or db_server.get('port', 5432),
+            'db_name': site_db_server.get('db_name') or db_server.get('db_name', 'secret_garden_v2')
         }
 
-        # Add selected application_config fields
-        app_cfg = config.get('application_config', {})
-        payload['application_config'] = {
-            'pk_length': app_cfg.get('pk_length'),
-            'pk_max_history': app_cfg.get('pk_max_history'),
-            'generated_password_length': app_cfg.get('generated_password_length'),
-            'generated_password_charset': app_cfg.get('generated_password_charset')
+        # Ensure db_credentials exists (fallback to empty if not provided)
+        if 'db_credentials' not in payload:
+            payload['db_credentials'] = {
+                'user': '',
+                'pass': ''
+            }
+
+        # Merge ALL project_meta fields dynamically (allow site-specific overrides)
+        project_meta = config.get('project_meta', {})
+        site_project_meta = site.get('project_meta', {})
+
+        # Start with all global project_meta values
+        merged_project_meta = dict(project_meta)
+
+        # Override with site-specific values if they exist
+        merged_project_meta.update(site_project_meta)
+
+        # Exclude fields that shouldn't be in per-site config
+        excluded_meta_fields = {'num_public_sites', 'num_unique_pk_sequences'}
+        payload['project_meta'] = {
+            k: v for k, v in merged_project_meta.items()
+            if k not in excluded_meta_fields
         }
+
+        # Merge ALL application_config fields dynamically (allow site-specific overrides)
+        app_cfg = config.get('application_config', {})
+        site_app_cfg = site.get('application_config', {})
+
+        # Start with all global application_config values
+        merged_app_cfg = dict(app_cfg)
+
+        # Override with site-specific values if they exist
+        merged_app_cfg.update(site_app_cfg)
+
+        payload['application_config'] = merged_app_cfg
 
         # Generate tripwire_pages: random picks from pages_menu excluding the first page and the secret_door value
         pages_menu = site.get('pages_menu', []) or []
@@ -559,19 +614,63 @@ def generate_public_config_php(config: Dict[str, Any]) -> None:
             processed_page_fields.append(pcopy)
         payload['secret_room_fields'] = processed_page_fields
 
-        json_payload = json.dumps(payload, indent=2, ensure_ascii=False)
+        # --- 2. Generate Native PHP Class ---
+        properties = []
+        assignments = []
 
-        php_content = ("<?php\n"
-                       "// Generated configuration for domain: %s\n"
-                       "$config = json_decode(<<<'JSON'\n%s\nJSON\n, true);\n") % (domain, json_payload)
+        for key, val in payload.items():
+            # Determine PHP Type
+            if isinstance(val, bool):
+                php_type = "bool"
+            elif isinstance(val, int):
+                php_type = "int"
+            elif isinstance(val, (dict, list)):
+                php_type = "array"
+            elif isinstance(val, str):
+                php_type = "string"
+            else:
+                php_type = "mixed"
+
+            # 1. Define Property
+            properties.append(f"    public readonly {php_type} ${key};")
+
+            # 2. Assign Value (converted to PHP literal)
+            php_val = to_php_val(val, indent_level=2)
+            assignments.append(f"        $this->{key} = {php_val};")
+
+        props_block = "\n".join(properties)
+        assign_block = "\n".join(assignments)
+
+        php_content = f"""<?php
+// Generated Immutable Configuration for {domain}
+
+namespace App;
+
+final class Config {{
+{props_block}
+
+    private static ?self $instance = null;
+
+    private function __construct() {{
+{assign_block}
+    }}
+
+    public static function instance(): self
+    {{
+        if (self::$instance === null) {{
+            self::$instance = new self();
+        }}
+        return self::$instance;
+    }}
+}}
+"""
 
         try:
             with open(cfg_path, 'w', encoding='utf-8') as f:
                 f.write(php_content)
-            print(f"  Wrote config for {domain} -> {cfg_path}")
+            print(f"  Wrote native config for {domain} -> {cfg_path}")
         except Exception as e:
             print(f"  Error writing config for {domain} at {cfg_path}: {e}")
-
 
 def generate_admin_config_php(config: Dict[str, Any]) -> None:
     """Clone `admin-site-source` into `build` and generate its `config/config.php` file."""
