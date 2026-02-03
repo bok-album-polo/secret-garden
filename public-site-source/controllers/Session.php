@@ -35,8 +35,32 @@ class Session
         if (empty($_SESSION['session_exists'])) {
             $_SESSION['session_exists'] = true;
             $_SESSION['pk_history'] = [];
-            $_SESSION['pk_ban'] = false;
+            $_SESSION['ip_banned'] = false;
             $_SESSION['pk_authed'] = false;
+
+            //insert into unauth sessions
+            try {
+                $db = self::getDb();
+                $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
+                $user_agent_id = self::getUserAgentId($db, $user_agent);
+                $session_id_hash = hash('sha256', session_id());
+
+                $statement = $db->prepare("SELECT unauthenticated_session_insert(?, ?, ?)");
+                $result = $statement->execute([
+                    $_SERVER['REMOTE_ADDR'],
+                    $user_agent_id,
+                    $session_id_hash
+                ]);
+
+                var_dump($result);
+
+                if (!$result) {
+                    //too many unauthenticated sessions
+                    $_SESSION['ip_banned'] = true;
+                }
+            } catch (PDOException $e) {
+                error_log($e->getMessage());
+            }
         }
     }
 
@@ -94,17 +118,17 @@ class Session
         return $_SESSION['pk_authed'] ?? false;
     }
 
-    private static function banIp(PDO $db, string $ip, string $reason, int $riskScore = 1, string $expires = '+24 hours'): void
+    private static function banIp(string $reason, int $riskScore = 1, string $duration = '24 hours'): void
     {
         try {
+            $db = self::getDb();
             $statement = $db->prepare("SELECT ip_ban_ban(?, ?, ?, ?)");
             $statement->execute([
-                $ip,
+                $_SERVER['REMOTE_ADDR'],
                 $reason,
                 $riskScore,
-                date('Y-m-d H:i:s', strtotime($expires))
+                date('Y-m-d H:i:s', strtotime("+$duration"))
             ]);
-            $_SESSION['pk_ban'] = true;
             $_SESSION['ip_banned'] = true;
         } catch (PDOException $e) {
             error_log("IP ban failed: " . $e->getMessage());
@@ -117,7 +141,18 @@ class Session
         $config = self::getConfig();
         $db = self::getDb();
 
-        // Step 1: Check IP ban
+        $pk_length = $config->application_config['pk_length'] ?? 5;
+        $pk_max_history = $config->application_config['pk_max_history'] ?? 20;
+        $tripwire_pages = $config->tripwire_pages ?? []; //TODO need more discussion into the functionality
+
+
+        // Step 1: skip if already authenticated/ip_banned
+        if ($_SESSION['pk_authed'] || $_SESSION['ip_banned']) {
+            return;
+        }
+
+
+        // Step 2: Check if current IP is banned
         try {
             $statement = $db->prepare("SELECT ip_ban_check(?) as is_banned");
             $statement->execute([$_SERVER['REMOTE_ADDR']]);
@@ -126,16 +161,14 @@ class Session
             $_SESSION['ip_banned'] = $ip_ban_result;
         } catch (PDOException $e) {
             error_log("IP ban check failed: " . $e->getMessage());
+        }
+
+        if ($_SESSION['ip_banned']) {
             return;
         }
 
-        // Step 2: Block if already authenticated/banned
-        if ($_SESSION['pk_authed'] || $_SESSION['pk_ban'] || $ip_ban_result) {
-            return;
-        }
 
-
-        // Step 3: Resolve route/page
+        // Step 2b: Resolve route/page
         $prettyUrls = $config->project_meta['pretty_urls'] ?? false;
         $route = $prettyUrls
             ? trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/')
@@ -154,83 +187,34 @@ class Session
 
         $id = $pages[$route] ?? $pages['home'];
 
-        $pkLength = $config->application_config['pk_length'] ?? 5;
-        $pkMaxHistory = $config->application_config['pk_max_history'] ?? 20;
-        $unauthThreshold = $config->application_config['unauth_threshold'] ?? 5;
-        $tripwirePages = [];//$config->tripwire_pages ?? []; //TODO need more discussion into the functionality
-
-        // Step 4: Add to history if not duplicate
+        // Step 3: Add to history if not duplicate
         $last = end($_SESSION['pk_history']);
         if ($last !== $id) {
             $_SESSION['pk_history'][] = $id;
         }
 
-        // Step 5: Tripwire check (immediately after adding to history)
-        if (in_array($route, $tripwirePages, true)) {
-            self::banIp($db, $_SERVER['REMOTE_ADDR'], 'Tripwire violation', 5);
+        // Step 4: Tripwire check (immediately after adding to history)
+        if (in_array($route, $tripwire_pages, true)) {
+            self::banIp('Tripwire violation', 1, '1 hours');
             return;
         }
 
-        // Step 6: Direct query to count unauth sessions in last 5 hours
-        try {
-            $statement = $db->prepare("
-            SELECT COUNT(*) AS recent_sessions
-            FROM unauthenticated_sessions
-            WHERE ip_address = ?
-              AND created_at > (NOW() - INTERVAL '5 hours')
-        ");
-            $statement->execute([$_SERVER['REMOTE_ADDR']]);
-            $result = $statement->fetch(PDO::FETCH_ASSOC);
-
-            if ($result && $result['recent_sessions'] >= 5) {
-                self::banIp($db, $_SERVER['REMOTE_ADDR'], 'Exceeded unauth session threshold', 2);
-                return;
-            } else {
-                // Insert new unauth session record with binding
-                $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
-                $userAgentId = self::getUserAgentId($db, $userAgent);
-                $sessionIdHash = hash('sha256', session_id());
-
-                $insertStmt = $db->prepare("
-                INSERT INTO unauthenticated_sessions (ip_address, user_agent_id, session_id_hash, domain)
-                VALUES (:ip_address, :user_agent_id, :session_id_hash, SESSION_USER)
-                ON CONFLICT (session_id_hash) DO NOTHING 
-            ");
-                $insertStmt->bindValue(':ip_address', $_SERVER['REMOTE_ADDR'], PDO::PARAM_STR);
-                $insertStmt->bindValue(':user_agent_id', $userAgentId, PDO::PARAM_INT);
-                $insertStmt->bindValue(':session_id_hash', $sessionIdHash, PDO::PARAM_STR);
-                $insertStmt->execute();
-            }
-        } catch (PDOException $e) {
-            error_log("Unauthenticated session tracking failed: " . $e->getMessage());
+        // Step 5: Only proceed if history length >= pk_length
+        if (count($_SESSION['pk_history']) < $pk_length) {
             return;
         }
 
+        // Step 6a: Extract sequence
+        $_SESSION['pk_sequence'] = implode('', array_slice($_SESSION['pk_history'], -$pk_length));
 
-        // Step 7: If unauth sessions < threshold, stop here
-        if (count($_SESSION['pk_history']) < $unauthThreshold) {
-            return;
-        }
-
-        // Step 8: Only proceed if history length >= pk_length
-        if (count($_SESSION['pk_history']) < $pkLength) {
-            return;
-        }
-
-        // Step 9: Extract sequence
-        $_SESSION['pk_sequence'] = implode('', array_slice($_SESSION['pk_history'], -$pkLength));
-
-        // Step 10: Validate sequence
+        // Step 6b: Validate sequence
         try {
             $statement = $db->prepare("SELECT COUNT(*) > 0 as is_valid FROM pk_get(?)");
             $statement->execute([$_SESSION['pk_sequence']]);
             $result = $statement->fetch(PDO::FETCH_ASSOC);
 
             if ($result && $result['is_valid']) {
-                session_regenerate_id(true);
-                $_SESSION['pk_authed'] = true;
-
-                // Step 11: Delete unauth session record (cleanup)
+                // Step 7: Delete unauth session record (cleanup)
                 try {
                     $sessionIdHash = hash('sha256', session_id());
                     $deleteStmt = $db->prepare("SELECT unauthenticated_session_delete(?)");
@@ -239,8 +223,11 @@ class Session
                     error_log("Unauthenticated session delete failed: " . $e->getMessage());
                 }
 
+                session_regenerate_id(true);
+                $_SESSION['pk_authed'] = true;
+
                 // Redirect to secret door
-                $secretDoor = $config->routing_secrets['secret_door'] ?? 'contact';
+                $secretDoor = $config->routing_secrets['secret_door'];
                 $route = $prettyUrls
                     ? "/$secretDoor"
                     : "/?page=$secretDoor";
@@ -248,19 +235,13 @@ class Session
                 header("Location: $route");
                 exit;
             } else {
-                // Step 12: Ban if history exceeds max
-                if (count($_SESSION['pk_history']) > $pkMaxHistory) {
-                    self::banIp($db, $_SERVER['REMOTE_ADDR'], 'Exceeded max pk_history', 3);
+                // Step 8: Ban if history exceeds max
+                if (count($_SESSION['pk_history']) > $pk_max_history) {
+                    self::banIp('Exceeded pk_max_history', 1, '1 hours');
                 }
             }
         } catch (PDOException $e) {
             error_log("PK validation failed: " . $e->getMessage());
         }
-    }
-
-
-    public static function regenerate(): bool
-    {
-        return session_regenerate_id(true);
     }
 }
