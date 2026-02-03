@@ -52,8 +52,6 @@ class Session
                     $session_id_hash
                 ]);
 
-                var_dump($result);
-
                 if (!$result) {
                     //too many unauthenticated sessions
                     $_SESSION['ip_banned'] = true;
