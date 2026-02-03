@@ -151,41 +151,7 @@ class SecretRoomController extends Controller
             // Insert using DynamicModel
             $id = $model->insert($data);
 
-            // Optional: log or return the new ID
-            // error_log("Submission recorded with ID: $id");
-
         } catch (\PDOException $e) {
-            error_log("Registration submission failed for '{$username}': " . $e->getMessage());
-        }
-    }
-
-
-    private function recordSubmissionOld(string $username, string $email, bool $authStatus): void
-    {
-        $model = new DynamicModel('secret_room_submissions');
-        $columns = $model->loadColumns();
-
-        var_dump($columns);
-//        $model->insert([]);
-
-        try {
-            $stmt = $this->db->prepare("
-                INSERT INTO secret_room_submissions 
-                (username, email, ip_address, user_agent, authenticated, created_by)
-                VALUES
-                (:username, :email, :ip_address, :user_agent, :authenticated, :created_by)
-            ");
-
-            $stmt->bindValue(':username', $username, PDO::PARAM_STR);
-            $stmt->bindValue(':email', $email, PDO::PARAM_STR);
-            $stmt->bindValue(':ip_address', $_SERVER['REMOTE_ADDR'], PDO::PARAM_STR);
-            $stmt->bindValue(':user_agent', substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 512), PDO::PARAM_STR);
-            $stmt->bindValue(':authenticated', $authStatus ? 'TRUE' : 'FALSE', PDO::PARAM_STR);
-            $stmt->bindValue(':created_by', $username, PDO::PARAM_STR);
-
-            $stmt->execute();
-
-        } catch (PDOException $e) {
             error_log("Registration submission failed for '{$username}': " . $e->getMessage());
         }
     }
