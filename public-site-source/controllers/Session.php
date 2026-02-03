@@ -69,7 +69,7 @@ class Session
         $config = self::getConfig();
         $db = self::getDb();
 
-        // Step 1: Check IP ban
+        // Step 1: Check an IP ban
         try {
             $statement = $db->prepare("SELECT ip_ban_check(?) as is_banned");
             $statement->execute([$_SERVER['REMOTE_ADDR']]);
