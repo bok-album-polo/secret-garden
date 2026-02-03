@@ -42,7 +42,7 @@ class Session
             try {
                 $db = self::getDb();
                 $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
-                $user_agent_id = self::getUserAgentId($db, $user_agent);
+                $user_agent_id = self::getUserAgentId($user_agent);
                 $session_id_hash = hash('sha256', session_id());
 
                 $statement = $db->prepare("SELECT unauthenticated_session_insert(?, ?, ?)");
@@ -81,12 +81,13 @@ class Session
         return json_encode($data);
     }
 
-    private static function getUserAgentId(PDO $db, string $userAgent): ?int
+    public static function getUserAgentId(string $user_agent): ?int
     {
         try {
             // Try to find existing user agent
+            $db = self::getDb();
             $stmt = $db->prepare("SELECT id FROM user_agents WHERE user_agent = :user_agent");
-            $stmt->bindValue(':user_agent', $userAgent, PDO::PARAM_STR);
+            $stmt->bindValue(':user_agent', $user_agent, PDO::PARAM_STR);
             $stmt->execute();
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -100,7 +101,7 @@ class Session
             VALUES (:user_agent)
             RETURNING id
         ");
-            $insertStmt->bindValue(':user_agent', $userAgent, PDO::PARAM_STR);
+            $insertStmt->bindValue(':user_agent', $user_agent, PDO::PARAM_STR);
             $insertStmt->execute();
             $newResult = $insertStmt->fetch(PDO::FETCH_ASSOC);
 
@@ -141,7 +142,7 @@ class Session
 
         $pk_length = $config->application_config['pk_length'] ?? 5;
         $pk_max_history = $config->application_config['pk_max_history'] ?? 20;
-        $tripwire_pages = $config->tripwire_pages ?? []; //TODO need more discussion into the functionality
+        $tripwire_pages = $config->tripwire_pages ?? [];
 
 
         // Step 1: skip if already authenticated/ip_banned
