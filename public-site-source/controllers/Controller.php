@@ -18,6 +18,7 @@ class Controller
             require __DIR__ . "/../views/layout/template.php";
         } else {
 //            $this->redirect('/');
+            error_log("View {$viewFile} not found");
         }
 
         //pad file size by random amount
