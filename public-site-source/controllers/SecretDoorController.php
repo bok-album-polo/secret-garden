@@ -24,7 +24,7 @@ class SecretDoorController extends Controller
             $this->redirect($_SERVER['REQUEST_URI']);
         }
 
-        $this->render('pages/contact-uss', [
+        $this->render('pages/contact-us', [
             'title' => 'Contact Us',
         ]);
     }
