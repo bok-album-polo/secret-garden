@@ -2,6 +2,7 @@
 
 namespace App\Controllers;
 
+use App\Models\DynamicModel;
 use App\Models\UserNamePool;
 use PDO;
 use PDOException;
@@ -21,16 +22,17 @@ class SecretRoomController extends Controller
     public function index(): void
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $this->handleRegistration();
+            $this->handleSecretRoom();
             exit;
         }
 
         $userData = UserNamePool::getDispatchedUser();
         $_SESSION['dispatched_user'] = $userData;
-        $this->render('pages/registration');
+        $secretRoom = $this->config->routing_secrets['secret_room'];
+        $this->render("pages/$secretRoom");
     }
 
-    private function handleRegistration(): void
+    private function handleSecretRoom(): void
     {
         // ----------------------------
         // Sanitize inputs
@@ -46,20 +48,40 @@ class SecretRoomController extends Controller
         // Check existing user
         // ----------------------------
         try {
-            $stmt = $this->db->prepare("SELECT * FROM get_user(:username)");
+            $stmt = $this->db->prepare("SELECT * FROM user_get(:username)");
             $stmt->bindValue(':username', $username, PDO::PARAM_STR);
             $stmt->execute();
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            if ($user && password_verify($providedPassword, $user['password_hash'])) {
-                $authStatus = (bool)$user['authenticated'];
-            } elseif (!$user) {
-                // ----------------------------
-                // Create new user
-                // ----------------------------
+            if ($user) {
+                // Returning user → must enter their password
+                if (!empty($providedPassword) && !empty($user['password'])) {
+                    if (password_verify($providedPassword, $user['password'])) {
+                        $authStatus = (bool)$user['authenticated'];
+                    }
+                } else {
+                    // Provided password is null or user has no hash → generate new password
+                    $generatedPassword = $this->generatePassword();
+                    $newHash = password_hash($generatedPassword, PASSWORD_DEFAULT);
+
+                    $update = $this->db->prepare(" UPDATE users SET password = :password WHERE username = :username");
+                    $update->bindValue(':password', $newHash, PDO::PARAM_STR);
+                    $update->bindValue(':username', $username, PDO::PARAM_STR);
+                    $update->execute();
+
+                    $authStatus = true;
+                }
+            } else {
+                // New user → ignore provided password, always generate one
                 $generatedPassword = $this->generatePassword();
-                $authStatus = $this->createNewUser($username, $generatedPassword);
+                $newHash = password_hash($generatedPassword, PASSWORD_DEFAULT);
+
+                $authStatus = $this->createNewUser($username, $newHash);
+
+                // Optional: communicate the generated password to the user
+                // echo "Your generated password is: {$generatedPassword}";
             }
+
         } catch (PDOException $e) {
             error_log("User lookup failed for '{$username}': " . $e->getMessage());
         }
@@ -114,8 +136,41 @@ class SecretRoomController extends Controller
     private function recordSubmission(string $username, string $email, bool $authStatus): void
     {
         try {
+            $model = new DynamicModel('secret_room_submissions');
+
+            // Build the data array dynamically
+            $data = [
+                'username' => $username,
+                'email' => $email,
+                'ip_address' => $_SERVER['REMOTE_ADDR'] ?? null,
+                'user_agent' => substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 512),
+                'authenticated' => $authStatus ? 'TRUE' : 'FALSE',
+                'created_by' => $username,
+            ];
+
+            // Insert using DynamicModel
+            $id = $model->insert($data);
+
+            // Optional: log or return the new ID
+            // error_log("Submission recorded with ID: $id");
+
+        } catch (\PDOException $e) {
+            error_log("Registration submission failed for '{$username}': " . $e->getMessage());
+        }
+    }
+
+
+    private function recordSubmissionOld(string $username, string $email, bool $authStatus): void
+    {
+        $model = new DynamicModel('secret_room_submissions');
+        $columns = $model->loadColumns();
+
+        var_dump($columns);
+//        $model->insert([]);
+
+        try {
             $stmt = $this->db->prepare("
-                INSERT INTO registration_form_submissions 
+                INSERT INTO secret_room_submissions 
                 (username, email, ip_address, user_agent, authenticated, created_by)
                 VALUES
                 (:username, :email, :ip_address, :user_agent, :authenticated, :created_by)
