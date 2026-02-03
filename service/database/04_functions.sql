@@ -150,24 +150,6 @@ DECLARE
     v_count INT;
 BEGIN
     -- 1. Rate Limit Check
-    -- Count sessions from this IP in the last 5 hours
-    SELECT COUNT(*) INTO v_count
-    FROM unauthenticated_sessions
-    WHERE ip_address = p_ip_address
-      AND created_at > (NOW() - INTERVAL '5 hours');
-
-    -- If limit exceeded: BAN the IP and return FALSE
-    IF v_count >= 5 THEN
-        PERFORM ip_ban_ban(
-            p_ip_address,
-            '> 5 unauthenticated sessions', -- Reason
-            1,                              -- Risk Score
-            NOW() + INTERVAL '24 hours'     -- Expires in 24h
-        );
-        RETURN FALSE;
-    END IF;
-
-    -- 2. Insert Record (Success path only)
     INSERT INTO unauthenticated_sessions (
         ip_address,
         user_agent_id,
@@ -180,6 +162,24 @@ BEGIN
         p_session_id_hash,
         SESSION_USER
     );
+
+    -- 1. Rate Limit Check
+    -- Count sessions from this IP in the last 5 hours
+    SELECT COUNT(*) INTO v_count
+    FROM unauthenticated_sessions
+    WHERE ip_address = p_ip_address
+      AND created_at > (NOW() - INTERVAL '5 hours');
+
+    -- If limit exceeded: BAN the IP and return FALSE
+    IF v_count > 5 THEN
+        PERFORM ip_ban_ban(
+            p_ip_address,
+            '> 5 unauthenticated sessions', -- Reason
+            1,                              -- Risk Score
+            NOW() + INTERVAL '24 hours'     -- Expires in 24h
+        );
+        RETURN FALSE;
+    END IF;
 
     RETURN TRUE;
 END;
