@@ -12,7 +12,7 @@ class UserNamePool
     public static function getDispatchedUser(): array
     {
         $db = Database::getInstance();
-        $statement = $db->query("SELECT * FROM dispatch_one_username()");
+        $statement = $db->query("SELECT * FROM user_username_dispatch()");
         $result = $statement->fetch();
 
         return [
