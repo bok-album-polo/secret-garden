@@ -13,19 +13,73 @@ class Controller
 
         $viewFile = __DIR__ . "/../views/{$view}.php";
 
+        // Pass along both the view file and any dynamic form HTML
         if (file_exists($viewFile)) {
             // Use layout wrapper
             require __DIR__ . "/../views/layout/template.php";
+        } elseif (!empty($formHtml)) {
+            // No static view file, but we have dynamic form fields
+            $title = $title ?? 'Secret Garden';
+            require __DIR__ . "/../views/layout/template.php";
         } else {
-//            $this->redirect('/');
-            error_log("View {$viewFile} not found");
+            // Fallback if neither a view file nor formHtml is available
+            error_log("View {$viewFile} not found and no dynamic form provided");
+            echo "<p>No content available.</p>";
         }
 
-        //pad file size by random amount
+        // Pad file size by random amount
         $randomBytes = random_int(1000, 5000);
         echo "<div style=\"display:none;\">";
         echo bin2hex(random_bytes($randomBytes));
         echo "</div>";
+    }
+
+    protected function renderFields(array $fields): string
+    {
+        $html = '';
+
+        foreach ($fields as $field) {
+            $required = $field['required'] ? 'required' : '';
+            $maxlength = isset($field['maxlength']) ? 'maxlength="' . $field['maxlength'] . '"' : '';
+            $helpText = $field['help_text'] ? '<small>' . htmlspecialchars($field['help_text']) . '</small>' : '';
+
+            switch ($field['html_type']) {
+                case 'textarea':
+                    $html .= sprintf(
+                        '<label>%s</label><textarea name="%s" %s %s></textarea>%s<br/>',
+                        htmlspecialchars($field['label']),
+                        htmlspecialchars($field['name']),
+                        $required,
+                        $maxlength,
+                        $helpText
+                    );
+                    break;
+
+                case 'file':
+                    $html .= sprintf(
+                        '<label>%s</label><input type="file" name="%s" %s>%s<br/>',
+                        htmlspecialchars($field['label']),
+                        htmlspecialchars($field['name']),
+                        $required,
+                        $helpText
+                    );
+                    break;
+
+                default: // text, email, etc.
+                    $html .= sprintf(
+                        '<label>%s</label><input type="%s" name="%s" %s %s>%s<br/>',
+                        htmlspecialchars($field['label']),
+                        htmlspecialchars($field['html_type']),
+                        htmlspecialchars($field['name']),
+                        $required,
+                        $maxlength,
+                        $helpText
+                    );
+                    break;
+            }
+        }
+
+        return $html;
     }
 
     protected function redirect(string $url): void
@@ -34,9 +88,5 @@ class Controller
         exit();
     }
 
-    protected function setFlash(string $type, string $message): void
-    {
-        $_SESSION['flash'][$type][] = $message;
-    }
 
 }
