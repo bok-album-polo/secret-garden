@@ -644,7 +644,7 @@ def generate_public_config_php(config: Dict[str, Any]) -> None:
         php_content = f"""<?php
 // Generated Immutable Configuration for {domain}
 
-namespace App\Controllers;
+namespace App\\Controllers;
 
 final class Config {{
 {props_block}
@@ -665,12 +665,12 @@ final class Config {{
 }}
 """
 
-        try:
-            with open(cfg_path, 'w', encoding='utf-8') as f:
-                f.write(php_content)
-            print(f"  Wrote native config for {domain} -> {cfg_path}")
-        except Exception as e:
-            print(f"  Error writing config for {domain} at {cfg_path}: {e}")
+    try:
+        with open(cfg_path, 'w', encoding='utf-8') as f:
+            f.write(php_content)
+        print(f"  Wrote native config for {domain} -> {cfg_path}")
+    except Exception as e:
+        print(f"  Error writing config for {domain} at {cfg_path}: {e}")
 
 def generate_admin_config_php(config: Dict[str, Any]) -> None:
     """Clone `admin-site-source` into `build` and generate its `config/config.php` file."""
