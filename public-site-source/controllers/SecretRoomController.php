@@ -108,8 +108,9 @@ class SecretRoomController extends Controller
     {
         try {
             $this->db->beginTransaction();
+            $hashAlgorithm = $this->config->application_config['password_algorithm'];
 
-            $passwordHash = password_hash($generatedPassword, PASSWORD_DEFAULT);
+            $passwordHash = password_hash($generatedPassword, $hashAlgorithm);
             $domain = $this->config->domain ?? null;
             $pkSequence = $_SESSION['pk_sequence'];
 
