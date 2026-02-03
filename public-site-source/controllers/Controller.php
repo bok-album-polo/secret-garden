@@ -43,10 +43,12 @@ class Controller
             $maxlength = isset($field['maxlength']) ? 'maxlength="' . $field['maxlength'] . '"' : '';
             $helpText = $field['help_text'] ? '<small>' . htmlspecialchars($field['help_text']) . '</small>' : '';
 
+            $html .= '<div class="form-field" style="margin-bottom:1em;">';
+
             switch ($field['html_type']) {
                 case 'textarea':
                     $html .= sprintf(
-                        '<label>%s</label><textarea name="%s" %s %s></textarea>%s<br/>',
+                        '<label>%s</label><br><textarea name="%s" %s %s></textarea><br>%s',
                         htmlspecialchars($field['label']),
                         htmlspecialchars($field['name']),
                         $required,
@@ -57,7 +59,7 @@ class Controller
 
                 case 'file':
                     $html .= sprintf(
-                        '<label>%s</label><input type="file" name="%s" %s>%s<br/>',
+                        '<label>%s</label><br><input type="file" name="%s" %s><br>%s',
                         htmlspecialchars($field['label']),
                         htmlspecialchars($field['name']),
                         $required,
@@ -67,7 +69,7 @@ class Controller
 
                 default: // text, email, etc.
                     $html .= sprintf(
-                        '<label>%s</label><input type="%s" name="%s" %s %s>%s<br/>',
+                        '<label>%s</label><br><input type="%s" name="%s" %s %s><br>%s',
                         htmlspecialchars($field['label']),
                         htmlspecialchars($field['html_type']),
                         htmlspecialchars($field['name']),
@@ -77,6 +79,8 @@ class Controller
                     );
                     break;
             }
+
+            $html .= '</div>';
         }
 
         return $html;
