@@ -40,6 +40,7 @@ CREATE TABLE secret_room_submissions
     username      VARCHAR(50) NOT NULL,
     created_at    TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     created_by    VARCHAR(50),
+    domain        VARCHAR(100) DEFAULT CURRENT_USER,
     ip_address    INET,
     user_agent_id INT REFERENCES user_agents (id),
     authenticated BOOLEAN     DEFAULT FALSE
