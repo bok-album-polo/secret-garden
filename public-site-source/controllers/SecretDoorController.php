@@ -25,9 +25,7 @@ class SecretDoorController extends Controller
         }
 
         $secretDoor = $this->config->routing_secrets['secret_door'];
-        $this->render("pages/$secretDoor", [
-            'title' => 'Contact Us',
-        ]);
+        $this->render("pages/$secretDoor");
     }
 
     private function handleSecretDoor(): void
