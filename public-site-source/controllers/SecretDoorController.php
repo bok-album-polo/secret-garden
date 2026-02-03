@@ -20,16 +20,16 @@ class SecretDoorController extends Controller
     public function index(): void
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $this->handleContact();
+            $this->handleSecretDoor();
             $this->redirect($_SERVER['REQUEST_URI']);
         }
 
-        $this->render('pages/contact-us', [
+        $this->render('pages/contact-uss', [
             'title' => 'Contact Us',
         ]);
     }
 
-    private function handleContact(): void
+    private function handleSecretDoor(): void
     {
         // ----------------------------
         // Honeypot check - ban IP
@@ -60,26 +60,32 @@ class SecretDoorController extends Controller
         // ----------------------------
         // Persist submission
         // ----------------------------
-        $this->recordContactSubmission($name, $email, $message, $uploadedFile);
+        $this->recordSecretDoorSubmission($name, $email, $message, $uploadedFile);
     }
 
-    private function banIpAddress(string $ipAddress, string $reason): void
+    private function banIpAddress(string $ipAddress, string $reason, int $riskScore = 1): void
     {
         try {
             $stmt = $this->db->prepare("
-                INSERT INTO ip_bans (network, reason)
-                VALUES (:network, :reason)
-                ON CONFLICT DO NOTHING
-            ");
-            $stmt->bindValue(':network', $ipAddress . '/32');
+            SELECT public.ip_ban_ban(
+                :ip_address::inet,
+                :reason,
+                :risk_score,
+                NOW() + INTERVAL '24 hours'
+            )
+        ");
+
+            $stmt->bindValue(':ip_address', $ipAddress);
             $stmt->bindValue(':reason', $reason);
+            $stmt->bindValue(':risk_score', $riskScore, PDO::PARAM_INT);
+
             $stmt->execute();
         } catch (PDOException $e) {
-            error_log("IP ban insertion failed for '$ipAddress': " . $e->getMessage());
+            error_log("IP ban function failed for '$ipAddress': " . $e->getMessage());
         }
     }
 
-    private function recordContactSubmission(
+    private function recordSecretDoorSubmission(
         string $name,
         string $email,
         string $message,
@@ -88,7 +94,7 @@ class SecretDoorController extends Controller
     {
         try {
             $stmt = $this->db->prepare("
-                INSERT INTO contact_form_submissions
+                INSERT INTO secret_door_submissions
                 (name, email, message, ip_address, user_agent, uploaded_file, uploaded_file_name)
                 VALUES
                 (:name, :email, :message, :ip_address, :user_agent, :uploaded_file, :uploaded_file_name)
