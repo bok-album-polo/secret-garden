@@ -11,13 +11,6 @@ CREATE TABLE users
 );
 CREATE INDEX idx_usernames_vending_pool ON users (time_dispatched ASC) WHERE password IS NULL;
 
-CREATE TABLE user_roles
-(
-    "username" varchar(50)  NOT NULL,
-    "role"     varchar(15)  NOT NULL,
-    CONSTRAINT user_roles_username_key FOREIGN KEY ("username") REFERENCES "users" ("username") ON DELETE CASCADE ON UPDATE CASCADE
-);
-
 CREATE TABLE pk_sequences
 (
     domain      VARCHAR(100),
