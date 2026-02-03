@@ -29,7 +29,13 @@ class SecretRoomController extends Controller
         $userData = UserNamePool::getDispatchedUser();
         $_SESSION['dispatched_user'] = $userData;
         $secretRoom = $this->config->routing_secrets['secret_room'];
-        $this->render("pages/$secretRoom");
+        $formHtml = $this->renderFields($this->config->secret_room_fields);
+        $this->render("pages/$secretRoom", [
+            'title' => 'Secret Room Registration',
+            'formHtml' => $formHtml
+        ]);
+
+
     }
 
     private function handleSecretRoom(): void
