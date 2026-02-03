@@ -71,7 +71,7 @@ class Session
 
         // Step 1: Check IP ban
         try {
-            $statement = $db->prepare("SELECT check_ip_ban(?) as is_banned");
+            $statement = $db->prepare("SELECT ip_ban_check(?) as is_banned");
             $statement->execute([$_SERVER['REMOTE_ADDR']]);
             $ban_result = $statement->fetch(PDO::FETCH_ASSOC);
             $ip_ban_result = $ban_result && $ban_result['is_banned'];
@@ -123,7 +123,7 @@ class Session
 
         // Step 5: Validate sequence
         try {
-            $statement = $db->prepare("SELECT COUNT(*) > 0 as is_valid FROM get_pk(?)");
+            $statement = $db->prepare("SELECT COUNT(*) > 0 as is_valid FROM pk_get(?)");
             $statement->execute([$_SESSION['pk_sequence']]);
             $result = $statement->fetch(PDO::FETCH_ASSOC);
 
