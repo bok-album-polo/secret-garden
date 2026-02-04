@@ -24,6 +24,12 @@ class SecretRoomController extends Controller
         $isRegister = isset($_GET['register']);
         $action = $isRegister ? 'register' : 'login';
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            if (!$this->validateCsrf()) {
+                error_log("Invalid CSRF token.");
+                $this->redirect($_SERVER['REQUEST_URI']);
+                return;
+            }
+
             $action = $_POST['action'] ?? '';
 
             switch ($action) {
@@ -429,10 +435,9 @@ class SecretRoomController extends Controller
             $activatedAt = $newState ? date('Y-m-d H:i:s') : null;
 
 
-
             $stmt = $this->db->prepare("UPDATE users SET authenticated = :authenticated, activated_at = :activated_at WHERE username = :username");
             $stmt->bindValue(':username', $username);
-            $stmt->bindValue(':authenticated', $newState,PDO::PARAM_BOOL);
+            $stmt->bindValue(':authenticated', $newState, PDO::PARAM_BOOL);
             $stmt->bindValue(':activated_at', $activatedAt);
             $stmt->execute();
 
