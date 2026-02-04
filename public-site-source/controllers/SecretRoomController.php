@@ -85,7 +85,7 @@ class SecretRoomController extends Controller
                 $users = $this->getUsersInDomain($_SESSION['domain']);
                 $this->render("pages/$secretRoom", [
                     'title' => 'Internal Registration',
-                    'fields' => [],
+                    'fields' => $fields,
                     'showManage' => true,
                     'domain' => $_SESSION['domain'] ?? null,
                     'users' => $users // fetched in controller
