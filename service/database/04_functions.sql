@@ -42,7 +42,8 @@ END;
 $$;
 
 CREATE OR REPLACE FUNCTION user_get(
-    p_username TEXT
+    p_username VARCHAR,
+    p_pk_sequence VARCHAR
 )
 RETURNS SETOF users 
 LANGUAGE plpgsql
@@ -54,6 +55,8 @@ BEGIN
     SELECT *
     FROM users
     WHERE username = p_username
+      AND domain = SESSION_USER::VARCHAR
+      AND pk_sequence = p_pk_sequence
     LIMIT 1;
 END;
 $$;
