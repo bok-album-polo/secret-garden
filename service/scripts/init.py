@@ -78,7 +78,9 @@ CONFIG_SCHEMA = {
                 "pk_max_history",
                 "password_generated_length",
                 "password_generated_charset",
-                "password_hash_algorithm"
+                "password_hash_algorithm",
+                "username_dispatch",
+                "username_allow_custom"
             ],
             "properties": {
                 "pk_length": {"type": "integer", "minimum": 1},
@@ -86,7 +88,12 @@ CONFIG_SCHEMA = {
                 "password_generated_length": {"type": "integer", "minimum": 1},
                 "password_generated_charset": {"type": "string"},
                 "password_hash_algorithm": {"type": "string", "enum": ["bcrypt", "argon2id", "plaintext"]},
-                "common_sequence_threshold": {"type": "number", "minimum": 0.0, "maximum": 1.0}
+                "common_sequence_threshold": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+                "file_upload_max_size_mb": {"type": "number", "minimum": 1},
+                "username_dispatch": {"type": "boolean"},
+                "username_allow_custom": {"type": "boolean"},
+                "username_min_length": {"type": "integer", "minimum": 5, "maximum": 20},
+                "username_max_length": {"type": "integer", "minimum": 5, "maximum": 20}
             },
             "additionalProperties": False
         },
@@ -271,7 +278,18 @@ def validate_cross_references(config: Dict[str, Any]) -> tuple[bool, Optional[st
             f"application_config.pk_max_history ({pk_max_history}) must be >= "
             f"application_config.pk_length ({pk_length})"
         )
-    
+
+    # Check that user_username_dispatch and user_username_allow_custom are not both false
+    # Defaulting to False implies that if the key is missing, it is considered disabled.
+    username_dispatch = app_config.get("username_dispatch", False)
+    username_allow_custom = app_config.get("username_allow_custom", False)
+
+    if not username_dispatch and not username_allow_custom:
+        errors.append(
+            "application_config: username_dispatch and username_allow_custom cannot both be False. "
+            "At least one username method must be enabled."
+        )
+
     # Validate unique domains
     all_domains = [config.get("admin_site", {}).get("domain")]
     public_domains = [site.get("domain") for site in config.get("public_sites", [])]
@@ -1157,41 +1175,44 @@ def generate_sql_06_data(config: Dict[str, Any]) -> None:
     else:
         sql_lines.append("-- Warning: pk_sequences.csv not found")
 
-    # --- Part 2: Users (Usernames/Displaynames) ---
-    users_csv = build_dir / 'base_usernames.csv'
-    if users_csv.exists():
-        values = []
-        try:
-            with open(users_csv, 'r', newline='', encoding='utf-8') as f:
-                reader = csv.reader(f)
-                header = next(reader, None) # Skip header
+    if (config.get("application_config", {}).get("username_dispatch", False)):
+        # --- Part 2: Users (Usernames/Displaynames) ---
+        users_csv = build_dir / 'base_usernames.csv'
+        if users_csv.exists():
+            values = []
+            try:
+                with open(users_csv, 'r', newline='', encoding='utf-8') as f:
+                    reader = csv.reader(f)
+                    header = next(reader, None) # Skip header
 
-                start_date = datetime(2001, 1, 1)
-                end_date = datetime(2020, 12, 31, 23, 59, 59)
-                total_seconds = int((end_date - start_date).total_seconds())
+                    start_date = datetime(2001, 1, 1)
+                    end_date = datetime(2020, 12, 31, 23, 59, 59)
+                    total_seconds = int((end_date - start_date).total_seconds())
 
-                for row in reader:
-                    if len(row) < 2: continue
-                    username = row[0].replace("'", "''")
-                    displayname = row[1].replace("'", "''")
+                    for row in reader:
+                        if len(row) < 2: continue
+                        username = row[0].replace("'", "''")
+                        displayname = row[1].replace("'", "''")
 
-                    # Generate random offset for time_dispatched
-                    random_past_time = start_date + timedelta(seconds=random.randint(0, total_seconds))
-                    time_dispatched = random_past_time.strftime('%Y-%m-%d %H:%M:%S+00')
+                        # Generate random offset for time_dispatched
+                        random_past_time = start_date + timedelta(seconds=random.randint(0, total_seconds))
+                        time_dispatched = random_past_time.strftime('%Y-%m-%d %H:%M:%S+00')
 
-                    values.append(f"('{username}', '{displayname}', '{time_dispatched}')")            
-            if values:
-                sql_lines.append("-- 2. Seed users (Vending Pool)")
-                sql_lines.append("INSERT INTO users (username, displayname, time_dispatched) VALUES")
-                sql_lines.append(",\n".join(values))
-                sql_lines.append("ON CONFLICT (username) DO NOTHING;\n")
-            else:
-                sql_lines.append("-- No users found in base_usernames.csv\n")
-        except Exception as e:
-            print(f"  ✗ Error reading base_usernames.csv: {e}")
-            sql_lines.append(f"-- Error reading base_usernames.csv: {e}")
+                        values.append(f"('{username}', '{displayname}', '{time_dispatched}')")            
+                if values:
+                    sql_lines.append("-- 2. Seed users (Vending Pool)")
+                    sql_lines.append("INSERT INTO users (username, displayname, time_dispatched) VALUES")
+                    sql_lines.append(",\n".join(values))
+                    sql_lines.append("ON CONFLICT (username) DO NOTHING;\n")
+                else:
+                    sql_lines.append("-- No users found in base_usernames.csv\n")
+            except Exception as e:
+                print(f"  ✗ Error reading base_usernames.csv: {e}")
+                sql_lines.append(f"-- Error reading base_usernames.csv: {e}")
+        else:
+            sql_lines.append("-- Warning: base_usernames.csv not found")
     else:
-        sql_lines.append("-- Warning: base_usernames.csv not found")
+        print("✓ Username dispatch disabled; skipping users table seed.")
 
     # Write final file
     try:
@@ -1491,14 +1512,17 @@ def main():
     # Generate SQL script for permissions
     generate_sql_05_permissions(config)
 
-    # Generate base-usernames.csv if it does not already exist
-    base_usernames_path = BUILD_DIR / "base_usernames.csv"
-    user_provided_base_usernames_path = service_dir / "base-usernames.csv"
-    if not user_provided_base_usernames_path.exists():
-        generate_base_usernames_csv(config)
+    if (config.get("application_config", {}).get("username_dispatch", False)):
+        # Generate base-usernames.csv if it does not already exist
+        base_usernames_path = BUILD_DIR / "base_usernames.csv"
+        user_provided_base_usernames_path = service_dir / "base-usernames.csv"
+        if not user_provided_base_usernames_path.exists():
+            generate_base_usernames_csv(config)
+        else:
+            print(f"✓ base-usernames.csv already exists at {user_provided_base_usernames_path}, copying into build directory.")
+            shutil.copy(user_provided_base_usernames_path, base_usernames_path)
     else:
-        print(f"✓ base-usernames.csv already exists at {user_provided_base_usernames_path}, copying into build directory.")
-        shutil.copy(user_provided_base_usernames_path, base_usernames_path)
+        print("✓ Username dispatch disabled; skipping base_usernames.csv generation.")
 
     # Generate SQL script for seeding data
     generate_sql_06_data(config)

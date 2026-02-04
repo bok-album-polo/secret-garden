@@ -21,6 +21,11 @@ application_config:
   password_generated_length: 8
   password_generated_charset: "0123456789"
   password_hash_algorithm: "bcrypt" # Options: bcrypt, argon2id, plaintext
+  file_upload_max_size_mb: 1
+  username_dispatch: true # Enable automatic username dispatching
+  username_allow_custom: true # Allow users to set custom usernames
+  username_min_length: 5
+  username_max_length: 20
 
 # DO NOT EDIT secret_door_fields here. Make changes under each public_site if required.
 secret_door_fields:
