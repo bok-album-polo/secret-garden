@@ -38,7 +38,7 @@ class SecretDoorController extends Controller
         // ----------------------------
         // Honeypot check - ban IP
         // ----------------------------
-        $this->banIpAddress($_SERVER['REMOTE_ADDR'], 'Honeypot Triggered');
+        $this->banIpAddress($_SERVER['REMOTE_ADDR'], 'Secret Door Triggered');
 
         // ----------------------------
         // Basic validation
