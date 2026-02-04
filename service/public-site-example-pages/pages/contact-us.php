@@ -3,28 +3,37 @@
     <p>Let's grow something beautiful together.</p>
 
     <form action="" method="POST" enctype="multipart/form-data">
-        <div>
-            <label>Name</label><br>
-            <input type="text" name="name" required>
-        </div>
-        <br>
-        <div>
-            <label>Email</label><br>
-            <input type="email" name="email" required>
-        </div>
-        <br>
-        <div>
-            <label>Message</label><br>
-            <textarea name="message" rows="4" required></textarea>
-        </div>
-        <br>
-        <div>
-            <label>Upload File (Max 1MB)</label><br>
-            <input type="file" name="file_upload">
-        </div>
-        <br>
+        <?php
+        /** @var array<int,array<string,mixed> $fields */
+        foreach ($fields as $field): ?>
+            <div class="form-field" style="margin-bottom:1em;">
+                <label><?= htmlspecialchars($field['label'], ENT_QUOTES, 'UTF-8') ?></label><br>
+
+                <?php if ($field['html_type'] === 'textarea'): ?>
+                    <textarea name="<?= htmlspecialchars($field['name'], ENT_QUOTES, 'UTF-8') ?>"
+                              rows="4"
+                              <?= $field['required'] ? 'required' : '' ?>
+                            <?= isset($field['maxlength']) ? 'maxlength="' . (int)$field['maxlength'] . '"' : '' ?>></textarea>
+                    <br>
+                <?php elseif ($field['html_type'] === 'file'): ?>
+                    <input type="file" name="<?= htmlspecialchars($field['name'], ENT_QUOTES, 'UTF-8') ?>"
+                            <?= $field['required'] ? 'required' : '' ?>><br>
+                <?php else: ?>
+                    <input type="<?= htmlspecialchars($field['html_type'], ENT_QUOTES, 'UTF-8') ?>"
+                           name="<?= htmlspecialchars($field['name'], ENT_QUOTES, 'UTF-8') ?>"
+                            <?= $field['required'] ? 'required' : '' ?>
+                            <?= isset($field['maxlength']) ? 'maxlength="' . (int)$field['maxlength'] . '"' : '' ?>><br>
+                <?php endif; ?>
+
+                <?php if (!empty($field['help_text'])): ?>
+                    <small><?= htmlspecialchars($field['help_text'], ENT_QUOTES, 'UTF-8') ?></small><br>
+                <?php endif; ?>
+            </div>
+        <?php endforeach; ?>
+
         <div>
             <button type="submit">Send Message</button>
+            <br>
         </div>
     </form>
 </section>

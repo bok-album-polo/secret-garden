@@ -6,6 +6,7 @@ if ($environment === 'development'):
     $pk_auth = $_SESSION['pk_authed'] ?? false;
     $is_pk_banned = $_SESSION['pk_ban'] ?? false;
     $is_ip_banned = $_SESSION['ip_banned'] ?? false;
+    $user_logged_in = $_SESSION['user_logged_in'] ?? false;
     $prettyUrls = $config->project_meta['pretty_urls'] ?? false;
     $secretDoor = $config->routing_secrets['secret_door'] ?? 'contact';
     $secretRoom = $config->routing_secrets['secret_room'] ?? 'registration';
@@ -103,6 +104,10 @@ if ($environment === 'development'):
             <tr>
                 <td>Authenticated</td>
                 <td><?= $pk_auth ? 'YES' : 'NO' ?></td>
+            </tr>
+            <tr>
+                <td>User logged in</td>
+                <td><?= $user_logged_in ? 'YES' : 'NO' ?></td>
             </tr>
             <tr>
                 <td>Session User</td>
