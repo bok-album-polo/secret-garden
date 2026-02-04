@@ -113,7 +113,7 @@ class Session
         }
     }
 
-    public static function isAuthenticated(): bool
+    public static function pk_authed(): bool
     {
         return $_SESSION['pk_authed'] ?? false;
     }
