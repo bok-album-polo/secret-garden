@@ -644,7 +644,7 @@ def generate_public_config_php(config: Dict[str, Any]) -> None:
         php_content = f"""<?php
 // Generated Immutable Configuration for {domain}
 
-namespace App\Controllers;
+namespace App\\Controllers;
 
 final class Config {{
 {props_block}
@@ -665,12 +665,12 @@ final class Config {{
 }}
 """
 
-        try:
-            with open(cfg_path, 'w', encoding='utf-8') as f:
-                f.write(php_content)
-            print(f"  Wrote native config for {domain} -> {cfg_path}")
-        except Exception as e:
-            print(f"  Error writing config for {domain} at {cfg_path}: {e}")
+    try:
+        with open(cfg_path, 'w', encoding='utf-8') as f:
+            f.write(php_content)
+        print(f"  Wrote native config for {domain} -> {cfg_path}")
+    except Exception as e:
+        print(f"  Error writing config for {domain} at {cfg_path}: {e}")
 
 def generate_admin_config_php(config: Dict[str, Any]) -> None:
     """Clone `admin-site-source` into `build` and generate its `config/config.php` file."""
@@ -934,20 +934,6 @@ def generate_sql_02_tables_extensions(config: Dict[str, Any]) -> None:
     db_dir = build_dir / 'database'
     db_dir.mkdir(parents=True, exist_ok=True)
     out_sql_path = db_dir / '02_tables_extensions.sql'
-    
-    # # Source path for the base SQL template
-    # base_sql_path = repo_root / 'service' / 'database' / 'base-02-tables.sql'
-
-    # if not base_sql_path.exists():
-    #     print(f"  ✗ Error: Base SQL file not found at {base_sql_path}")
-    #     return
-
-    # try:
-    #     with open(base_sql_path, 'r', encoding='utf-8') as f:
-    #         base_sql_content = f.read()
-    # except Exception as e:
-    #     print(f"  ✗ Error reading base SQL: {e}")
-    #     return
 
     extensions = ["\n-- Dynamic Schema Extensions based on YAML Config"]
 
@@ -995,7 +981,7 @@ def generate_sql_02_tables_extensions(config: Dict[str, Any]) -> None:
             extensions.append(f'ALTER TABLE secret_room_submissions ADD COLUMN IF NOT EXISTS "{col}" {dtype};')
 
     # Combine and Write
-    full_sql = "".join(extensions) + "\n"
+    full_sql = "\n".join(extensions)
 
     try:
         with open(out_sql_path, 'w', encoding='utf-8') as f:

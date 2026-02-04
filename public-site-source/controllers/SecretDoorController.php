@@ -24,8 +24,12 @@ class SecretDoorController extends Controller
             $this->redirect($_SERVER['REQUEST_URI']);
         }
 
-        $this->render('pages/contact-us', [
-            'title' => 'Contact Us',
+        $secretDoor = $this->config->routing_secrets['secret_door'];
+        $formHtml = $this->renderFields($this->config->secret_door_fields);
+
+        $this->render("pages/$secretDoor", [
+            'title' => 'Secret Door',
+            'formHtml' => $formHtml
         ]);
     }
 
@@ -95,16 +99,16 @@ class SecretDoorController extends Controller
         try {
             $stmt = $this->db->prepare("
                 INSERT INTO secret_door_submissions
-                (name, email, message, ip_address, user_agent, uploaded_file, uploaded_file_name)
+                (name, email, message, ip_address, file, name,user_agent_id)
                 VALUES
-                (:name, :email, :message, :ip_address, :user_agent, :uploaded_file, :uploaded_file_name)
+                (:name, :email, :message, :ip_address, :uploaded_file, :uploaded_file_name,:user_agent_id)
             ");
 
             $stmt->bindValue(':name', $name);
             $stmt->bindValue(':email', $email);
             $stmt->bindValue(':message', $message);
             $stmt->bindValue(':ip_address', $_SERVER['REMOTE_ADDR']);
-            $stmt->bindValue(':user_agent', substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 512));
+            $stmt->bindValue(':user_agent_id', substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 512));
             $stmt->bindValue(':uploaded_file', $uploadedFile['data'] ?? null, PDO::PARAM_LOB);
             $stmt->bindValue(':uploaded_file_name', $uploadedFile['name'] ?? null);
 

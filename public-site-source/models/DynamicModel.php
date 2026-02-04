@@ -2,7 +2,8 @@
 
 namespace App\Models;
 
-use App\Core\Database;
+
+use App\Controllers\Database;
 use PDO;
 
 class DynamicModel
@@ -19,7 +20,8 @@ class DynamicModel
         $this->loadColumns();
     }
 
-    private function loadColumns()
+    // Made public so you can call it explicitly
+    public function loadColumns(): array
     {
         $stmt = $this->pdo->prepare("
             SELECT column_name, column_default
@@ -29,17 +31,19 @@ class DynamicModel
         $stmt->execute(['table' => $this->table]);
         $cols = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+        $this->columns = [];
         foreach ($cols as $col) {
             $this->columns[] = $col['column_name'];
             if (strpos($col['column_default'] ?? '', 'nextval') !== false) {
                 $this->primaryKey = $col['column_name'];
             }
         }
+
+        return $this->columns;
     }
 
     public function insert(array $data)
     {
-        // exclude auto-increment PK
         $fields = array_diff(array_intersect(array_keys($data), $this->columns), [$this->primaryKey]);
         $placeholders = array_map(fn($f) => ":$f", $fields);
 
