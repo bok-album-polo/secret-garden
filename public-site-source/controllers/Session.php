@@ -37,6 +37,7 @@ class Session
             $_SESSION['pk_history'] = [];
             $_SESSION['ip_banned'] = false;
             $_SESSION['pk_authed'] = false;
+            $_SESSION['user_logged_in'] = false;
 
             //insert into unauth sessions
             try {

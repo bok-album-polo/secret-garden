@@ -1,6 +1,6 @@
 <!-- pages/registration-success.php -->
 
-<?php if (!empty($username) || !empty($email)): ?>
+<?php if (!empty($username)): ?>
     <style>
         .summary-container {
             max-width: 600px;
@@ -165,6 +165,10 @@
             <tr>
                 <th>Username</th>
                 <td><?= htmlspecialchars($username ?? '') ?></td>
+            </tr>
+            <tr>
+                <th>Display Name</th>
+                <td><?= htmlspecialchars($displayname ?? '') ?></td>
             </tr>
             <tr>
                 <th>Email</th>
