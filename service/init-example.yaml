@@ -23,7 +23,7 @@ application_config:
   password_hash_algorithm: "bcrypt" # Options: bcrypt, argon2id, plaintext
   file_upload_max_size_mb: 1
   username_dispatch: true # Enable automatic username dispatching
-  username_allow_custom: true # Allow users to set custom usernames
+  username_allow_custom: false # Allow users to set custom usernames
   username_min_length: 5
   username_max_length: 20
 
