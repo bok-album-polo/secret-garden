@@ -154,7 +154,6 @@ AS $$
 DECLARE
     v_count INT;
 BEGIN
-    -- 1. Rate Limit Check
     INSERT INTO unauthenticated_sessions (
         ip_address,
         user_agent_id,
@@ -183,10 +182,10 @@ BEGIN
             1,                              -- Risk Score
             NOW() + INTERVAL '24 hours'     -- Expires in 24h
         );
-        RETURN FALSE;
+        RETURN FALSE; -- Rate limit exceeded
     END IF;
 
-    RETURN TRUE;
+    RETURN TRUE; -- Rate limit not exceeded
 END;
 $$;
 
@@ -227,17 +226,22 @@ BEGIN
           AND role = 'group_admin'
     ) THEN
         -- Get the admin's domain and pk_sequence
+        -- Validation: Ensure the user's domain matches the current session user
         SELECT domain, pk_sequence
         INTO v_domain, v_pk_sequence
         FROM users
-        WHERE users.username = p_username;
+        WHERE users.username = p_username
+          AND users.domain = SESSION_USER::VARCHAR;
 
-        -- Return all users sharing the same domain and pk_sequence
-        RETURN QUERY
-        SELECT u.username
-        FROM users u
-        WHERE u.domain = v_domain
-          AND u.pk_sequence = v_pk_sequence;
+        -- Proceed only if the user was found and domain matched
+        IF FOUND THEN
+            -- Return all users sharing the same domain and pk_sequence
+            RETURN QUERY
+            SELECT u.username
+            FROM users u
+            WHERE u.domain = v_domain
+              AND u.pk_sequence = v_pk_sequence;
+        END IF;
     END IF;
 END;
 $$;
