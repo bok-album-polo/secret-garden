@@ -32,7 +32,7 @@ if ($prettyUrls) {
 
 // Route handling
 if ($page === $secretDoor) {
-    if (Session::isAuthenticated()) {
+    if (Session::pk_authed()) {
         $controller = new SecretRoomController();
     } else {
         $controller = new SecretDoorController();
