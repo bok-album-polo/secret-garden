@@ -63,12 +63,13 @@ CREATE OR REPLACE FUNCTION user_activate(
     p_password VARCHAR,
     p_pk_sequence VARCHAR
 )
-RETURNS VOID
+RETURNS SETOF users
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 BEGIN
+    RETURN QUERY
     UPDATE users
     SET 
         password = p_password,
@@ -76,7 +77,8 @@ BEGIN
         activated_at = NOW(),
         domain = SESSION_USER::VARCHAR
     WHERE username = p_username
-      AND password IS NULL;
+      AND password IS NULL
+    RETURNING *;
 
     IF NOT FOUND THEN
         RAISE EXCEPTION 'User % not found or already activated (password set).', p_username;
