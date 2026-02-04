@@ -21,123 +21,90 @@ class SecretRoomController extends Controller
 
     public function index(): void
     {
-        $isRegister = isset($_GET['register']);
-        $action = $isRegister ? 'register' : 'login';
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            if (!$this->validateCsrf()) {
-                error_log("Invalid CSRF token.");
-                $this->redirect($_SERVER['REQUEST_URI']);
-                return;
+        $secretRoom = $this->config->routing_secrets['secret_room'];
+        // Decide which view to render
+        if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+            $isLoggedIn = $_SESSION['user_logged_in'];
+
+            if (!$isLoggedIn) {
+                // Render login view
+                $this->render("pages/login", [
+                    'title' => 'Login'
+                ]);
+            } else {
+                // Render secret_room view
+                $fields = $this->config->secret_room_fields;
+                if (in_array('group_admin', $_SESSION['roles'], true)) {
+                    // Render secret room AND management view
+                    //function that return users , parameter will be logged in user
+//                    $users = $this->getUsersInDomain($_SESSION['domain']);
+//                    $this->render("pages/$secretRoom", [
+//                        'fields' => $fields,
+//                        'showManage' => true,
+//                        'domain' => $_SESSION['domain'] ?? null,
+//                        'users' => $users // fetched in controller
+//                    ]);
+                } else {
+                    // Normal secret room
+                    $this->render("pages/$secretRoom", [
+                        'fields' => $fields,
+                    ]);
+                }
+
             }
+        }
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+//            if (!$this->validateCsrf()) {
+//                error_log("Invalid CSRF token.");
+//                $this->redirect($_SERVER['REQUEST_URI']);
+//                return;
+//            }
 
             $action = $_POST['action'] ?? '';
 
             switch ($action) {
-                case 'reload_username':
-                    // Force a new dispatched user
-                    $userData = UserNamePool::getDispatchedUser(true);
-                    $_SESSION['dispatched_user'] = $userData;
-                    $this->redirect($_SERVER['REQUEST_URI']);
-                    return;
-
+                //user actions
                 case 'login':
-                    $this->handleLogin();
-                    return;
-                case 'register_submit':
-                    $this->handleRegistration();
-                    return;
-                case 'register':
-                    // Switch to registration mode
-                    $this->redirect($_SERVER['REQUEST_URI'] . "&register=1");
-                    return;
-                case 'reset_password':
-                    $this->resetPassword();
-                    return;
+                    $this->handleUserLogin();
+                    break;
+                case 'username_choice':
+                    $userData = UserNamePool::getDispatchedUser();
+                    $_SESSION['dispatched_user'] = $userData;
+                    $this->render("pages/username-choice", [
+                        'title' => 'Username Choice',
+                    ]);
+                    break;
+                case 'user_activate':
+                    $this->handleUserActivate();
+                    break;
 
+                //admin actions
+                case 'admin_list_submissions':
+                    $this->listAdminSubmissions();
+                    break;
+                case 'admin_authenticate_submission':
+                    //handle the authentication
+                    break;
+                case 'admin_edit_submission':
+                    // handle editing of submission
+                    break;
+                case 'admin_reset_password':
+                    $this->resetPassword();
+                    break;
                 case 'deactivate_user':
                     $this->deactivateUser();
-                    return;
-
+                    break;
                 case 'toggle_role':
                     $this->toggleGroupAdmin();
-                    return;
-
-
+                    break;
                 default:
                     $this->handleSecretRoom(); // fallback for other POSTs
-                    exit;
+                    break;
             }
-        }
-
-        $secretRoom = $this->config->routing_secrets['secret_room'];
-        // Decide which view to render
-        $isLoggedIn = !empty($_SESSION['user_logged_in']); // your login flag
-
-        if (!$isLoggedIn) {
-            // Render login view
-            // Always dispatch a user for defaults
-            $userData = $_SESSION['dispatched_user'] ?? UserNamePool::getDispatchedUser();
-            $_SESSION['dispatched_user'] = $userData;
-
-            $this->render("pages/login", [
-                'title' => 'Login',
-                'action' => $action
-            ]);
-        } else {
-            // Render registration view
-            $fields = $this->config->secret_room_fields;
-            if (in_array('group_admin', $_SESSION['roles'], true)) {
-                // Render secret room AND management view
-                $users = $this->getUsersInDomain($_SESSION['domain']);
-                $this->render("pages/$secretRoom", [
-                    'title' => 'Internal Registration',
-                    'fields' => $fields,
-                    'showManage' => true,
-                    'domain' => $_SESSION['domain'] ?? null,
-                    'users' => $users // fetched in controller
-                ]);
-            } else {
-                // Normal secret room
-                $this->render("pages/$secretRoom", [
-                    'title' => 'Internal Registration',
-                    'fields' => $fields,
-                ]);
-            }
-
         }
     }
 
-    private function getUsersInDomain(string $domain): array
-    {
-        try {
-            $stmt = $this->db->prepare("
-                SELECT 
-                    u.username,
-                    u.displayname,
-                    u.domain,
-                    u.authenticated,
-                    u.pk_sequence,
-                    u.activated_at,
-                    u.time_dispatched,
-                    COALESCE(array_agg(ur.role) FILTER (WHERE ur.role IS NOT NULL), '{}') AS roles
-                FROM users u
-                LEFT JOIN user_roles ur ON ur.username = u.username
-                WHERE u.domain = :domain
-                GROUP BY u.username, u.displayname, u.domain,
-                         u.authenticated, u.pk_sequence, u.activated_at, u.time_dispatched
-                ORDER BY u.username ASC;
-        ");
-            $stmt->bindValue(':domain', $domain, PDO::PARAM_STR);
-            $stmt->execute();
-
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (PDOException $e) {
-            error_log("Failed to fetch users for domain '{$domain}': " . $e->getMessage());
-            return [];
-        }
-    }
-
-    private function handleLogin(): void
+    private function handleUserLogin(): void
     {
         $username = trim($_POST['username'] ?? '');
         $password = trim($_POST['password'] ?? '');
@@ -149,16 +116,25 @@ class SecretRoomController extends Controller
 
         try {
             // Look up user by username (using your helper function)
-            $stmt = $this->db->prepare("SELECT * FROM users where username = :username");
+            $stmt = $this->db->prepare("SELECT * FROM user_get(:username)");
             $stmt->bindValue(':username', $username, PDO::PARAM_STR);
             $stmt->execute();
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if ($user && password_verify($password, $user['password'])) {
-                // Successful login
-                $_SESSION['user_logged_in'] = true;
-                $_SESSION['username'] = $user['username'];
-                $_SESSION['domain'] = $user['domain'] ?? null;
+                if ($user['domain'] == $this->config->domain && $user['pk_sequence'] == $_SESSION['pk_sequence']) {
+                    // Successful login
+                    $_SESSION['user_logged_in'] = true;
+                    $_SESSION['username'] = $user['username'];
+                    $_SESSION['dispatched_user'] = [
+                        'username' => $user['username'],
+                        'display_name' => $user['displayname'],
+                    ];
+                } else {
+                    //TODO: render view to show the message
+                    echo "Wrong entry point";
+                    return;
+                }
 
                 // Fetch roles for this user
                 $roleStmt = $this->db->prepare("SELECT role FROM user_roles WHERE username = :username");
@@ -190,7 +166,7 @@ class SecretRoomController extends Controller
         // Sanitize inputs
         // ----------------------------
         $username = trim($_POST['username'] ?? '');
-        $email = trim($_POST['email'] ?? '');
+        $email = trim($_POST['primary_email'] ?? null);
         $providedPassword = $_POST['password'] ?? '';
 
         $authStatus = false;
@@ -212,7 +188,7 @@ class SecretRoomController extends Controller
                         $authStatus = (bool)$user['authenticated'];
                     }
                 } else {
-                    // Provided password is null or user has no hash → generate new password
+                    // Provided the password is null, or a user has no hash → generate new password
                     $generatedPassword = $this->generatePassword();
                     $newHash = password_hash($generatedPassword, PASSWORD_DEFAULT);
 
@@ -223,15 +199,6 @@ class SecretRoomController extends Controller
 
                     $authStatus = true;
                 }
-            } else {
-                // New user → ignore provided password, always generate one
-                $generatedPassword = $this->generatePassword();
-                $newHash = password_hash($generatedPassword, PASSWORD_DEFAULT);
-
-                $authStatus = $this->createOrUpdateUser($username, $newHash);
-
-                // Optional: communicate the generated password to the user
-                // echo "Your generated password is: {$generatedPassword}";
             }
 
         } catch (PDOException $e) {
@@ -256,80 +223,37 @@ class SecretRoomController extends Controller
         ]);
     }
 
-    private function getHashAlgorithm(): string
-    {
-        $algoFromConfig = strtolower($this->config->application_config['password_hash_algorithm']);
-
-        $algorithmMap = [
-            'bcrypt' => PASSWORD_BCRYPT,
-            'argon2i' => PASSWORD_ARGON2I,
-            'argon2id' => PASSWORD_ARGON2ID,
-            'default' => PASSWORD_DEFAULT,
-        ];
-
-        return $algorithmMap[$algoFromConfig] ?? PASSWORD_DEFAULT;
-    }
-
-    private function createOrUpdateUser(string $username, string $displayName, string $generatedPassword): bool
+    private function handleUserActivate(): void
     {
         try {
-            $this->db->beginTransaction();
+            $username = trim($_POST['username'] ?? '');
+            $displayName = trim($_POST['displayname'] ?? '');
 
+            $generatedPassword = $this->generatePassword();
             $passwordHash = password_hash($generatedPassword, $this->getHashAlgorithm());
-            $domain = $this->config->domain ?? null;
+
             $pkSequence = $_SESSION['pk_sequence'];
 
-            $stmt = $this->db->prepare("
-            INSERT INTO users (username, displayname, password, domain, pk_sequence, time_dispatched)
-            VALUES (:username, :displayname, :password, :domain, :pk_sequence, :time_dispatched)
-            ON CONFLICT (username)
-            DO UPDATE SET
-                displayname     = EXCLUDED.displayname,
-                password        = EXCLUDED.password,
-                domain          = EXCLUDED.domain,
-                pk_sequence     = EXCLUDED.pk_sequence,
-                time_dispatched = EXCLUDED.time_dispatched
-        ");
+            $statement = $this->db->prepare("select * from user_activate(:username, :password, :pk_sequence)");
 
-            $stmt->bindValue(':username', $username);
-            $stmt->bindValue(':displayname', $displayName);
-            $stmt->bindValue(':password', $passwordHash);
-            $stmt->bindValue(':domain', $domain);
-            $stmt->bindValue(':pk_sequence', $pkSequence);
-            $stmt->bindValue(':time_dispatched', date('Y-m-d H:i:s'));
+            $statement->bindValue(':username', $username);
+            $statement->bindValue(':password', $passwordHash);
+            $statement->bindValue(':pk_sequence', $pkSequence);
+            $statement->execute();
+            $activation_result = $statement->fetch(PDO::FETCH_ASSOC);
 
-            $stmt->execute();
-            $this->db->commit();
-
-            // Return false if you want to force login after registration,
-            // or true if you consider updated users authenticated.
-            return false;
-
+            $this->render('pages/registration-summary', [
+                'username' => $username,
+                'displayname' => $displayName,
+                'email' => null,
+                'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
+                'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? '',
+                'generated_password' => $generatedPassword
+            ]);
         } catch (PDOException $e) {
-            $this->db->rollBack();
-            error_log("User registration failed for '{$username}': " . $e->getMessage());
-            return false;
+            error_log("User activation failed for '{$username}': " . $e->getMessage());
+            echo "Unable to activate user";
         }
-    }
-
-    private function handleRegistration()
-    {
-        $username = trim($_POST['username'] ?? '');
-        $displayName = trim($_POST['displayname'] ?? '');
-
-        $generatedPassword = $this->generatePassword();
-        $authStatus = $this->createOrUpdateUser($username, $displayName, $generatedPassword);
-
-
-        $this->render('pages/registration-summary', [
-            'username' => $username,
-            'displayname' => $displayName,
-            'email' => null,
-            'authenticated' => $authStatus,
-            'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
-            'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? '',
-            'generated_password' => $generatedPassword
-        ]);
     }
 
     private function recordSubmission(
@@ -380,6 +304,20 @@ class SecretRoomController extends Controller
         }
     }
 
+
+    private function getHashAlgorithm(): string
+    {
+        $algoFromConfig = strtolower($this->config->application_config['password_hash_algorithm']);
+
+        $algorithmMap = [
+            'bcrypt' => PASSWORD_BCRYPT,
+            'argon2i' => PASSWORD_ARGON2I,
+            'argon2id' => PASSWORD_ARGON2ID,
+            'default' => PASSWORD_DEFAULT,
+        ];
+
+        return $algorithmMap[$algoFromConfig] ?? PASSWORD_DEFAULT;
+    }
 
     /**
      * @throws RandomException
@@ -480,5 +418,20 @@ class SecretRoomController extends Controller
             error_log("Toggle role failed for '{$username}': " . $e->getMessage());
         }
         $this->redirect($_SERVER['REQUEST_URI']);
+    }
+
+    private function listAdminSubmissions()
+    {
+        $username = $_SESSION['username'] ?? '';
+
+        $statement = $this->db->prepare("select * from group_admin_list_group_submissions(:username)");
+
+        $statement->bindValue(':username', $username);
+        $statement->execute();
+        $submissions = $statement->fetch(PDO::FETCH_ASSOC);
+
+        $this->render("pages/admin-submissions", [
+            'submissions' => $submissions,
+        ]);
     }
 }
