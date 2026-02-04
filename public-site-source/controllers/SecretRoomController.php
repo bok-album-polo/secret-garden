@@ -169,8 +169,8 @@ class SecretRoomController extends Controller
      */
     private function generatePassword(): string
     {
-        $passwordLength = $this->config->application_config['generated_password_length'] ?? 8;
-        $charset = $this->config->application_config['generated_password_charset'] ?? '0123456789';
+        $passwordLength = $this->config->application_config['password_generated_length'] ?? 8;
+        $charset = $this->config->application_config['password_generated_charset'] ?? '0123456789';
         $charsetLength = strlen($charset);
         $randomString = '';
 

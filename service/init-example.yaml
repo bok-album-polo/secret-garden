@@ -18,8 +18,8 @@ application_config:
   pk_length: 5
   common_sequence_threshold: .02 # reject pk_sequence if pk_sequence in top n of common PINs
   pk_max_history: 20 # Note: Must be >= pk_length
-  generated_password_length: 8
-  generated_password_charset: "0123456789"
+  password_generated_length: 8
+  password_generated_charset: "0123456789"
   password_hash_algorithm: "bcrypt" # Options: bcrypt, argon2id, plaintext
 
 # DO NOT EDIT secret_door_fields here. Make changes under each public_site if required.
