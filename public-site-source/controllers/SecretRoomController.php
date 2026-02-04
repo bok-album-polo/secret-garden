@@ -44,6 +44,18 @@ class SecretRoomController extends Controller
                     // Switch to registration mode
                     $this->redirect($_SERVER['REQUEST_URI'] . "&register=1");
                     return;
+                case 'reset_password':
+                    $this->resetPassword();
+                    return;
+
+                case 'deactivate_user':
+                    $this->deactivateUser();
+                    return;
+
+                case 'toggle_role':
+                    $this->toggleGroupAdmin();
+                    return;
+
 
                 default:
                     $this->handleSecretRoom(); // fallback for other POSTs
@@ -379,5 +391,89 @@ class SecretRoomController extends Controller
         }
 
         return $randomString;
+    }
+
+    private function resetPassword(): void
+    {
+        try {
+            $username = $_POST['username'] ?? '';
+            $newPassword = $this->generatePassword();
+            $hash = password_hash($newPassword, $this->getHashAlgorithm());
+
+            $stmt = $this->db->prepare("UPDATE users SET password = :password WHERE username = :username");
+            $stmt->bindValue(':password', $hash);
+            $stmt->bindValue(':username', $username);
+            $stmt->execute();
+
+            $_SESSION['flash_message'] = "Password reset for {$username}. New password: {$newPassword}";
+        } catch (PDOException $e) {
+            error_log("Password reset failed for '{$username}': " . $e->getMessage());
+            $_SESSION['flash_message'] = "Failed to reset password.";
+        }
+        $this->redirect($_SERVER['REQUEST_URI']);
+    }
+
+    private function deactivateUser(): void
+    {
+        $username = $_POST['username'] ?? '';
+
+        try {
+            // Check current state
+            $stmt = $this->db->prepare("SELECT authenticated FROM users WHERE username = :username");
+            $stmt->bindValue(':username', $username);
+            $stmt->execute();
+            $current = $stmt->fetchColumn();
+
+            $newState = ($current === 't' || $current === true); // Postgres returns 't'/'f' or bool
+            $newState = !$newState;
+            $activatedAt = $newState ? date('Y-m-d H:i:s') : null;
+
+
+
+            $stmt = $this->db->prepare("UPDATE users SET authenticated = :authenticated, activated_at = :activated_at WHERE username = :username");
+            $stmt->bindValue(':username', $username);
+            $stmt->bindValue(':authenticated', $newState,PDO::PARAM_BOOL);
+            $stmt->bindValue(':activated_at', $activatedAt);
+            $stmt->execute();
+
+            if ($newState) {
+                $_SESSION['flash_message'] = "User {$username} activated.";
+            } else {
+                $_SESSION['flash_message'] = "User {$username} deactivated.";
+            }
+
+        } catch (PDOException $e) {
+            error_log("Toggle active state failed for '{$username}': " . $e->getMessage());
+            $_SESSION['flash_error'] = "Failed to toggle active state.";
+        }
+        $this->redirect($_SERVER['REQUEST_URI']);
+    }
+
+    private function toggleGroupAdmin(): void
+    {
+        try {
+            $username = $_POST['username'] ?? '';
+            $stmt = $this->db->prepare("SELECT 1 FROM user_roles WHERE username = :username AND role = 'group_admin'");
+            $stmt->bindValue(':username', $username);
+            $stmt->execute();
+            $exists = $stmt->fetchColumn();
+
+            if ($exists) {
+                // Remove role
+                $del = $this->db->prepare("DELETE FROM user_roles WHERE username = :username AND role = 'group_admin'");
+                $del->bindValue(':username', $username);
+                $del->execute();
+                $_SESSION['flash_message'] = "Removed group_admin role from {$username}.";
+            } else {
+                // Add role
+                $ins = $this->db->prepare("INSERT INTO user_roles (username, role) VALUES (:username, 'group_admin')");
+                $ins->bindValue(':username', $username);
+                $ins->execute();
+                $_SESSION['flash_message'] = "Granted group_admin role to {$username}.";
+            }
+        } catch (PDOException $e) {
+            error_log("Toggle role failed for '{$username}': " . $e->getMessage());
+        }
+        $this->redirect($_SERVER['REQUEST_URI']);
     }
 }
