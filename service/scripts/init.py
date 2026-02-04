@@ -1117,7 +1117,7 @@ def generate_sql_05_permissions(config: Dict[str, Any]) -> None:
         users=public_users_list,
         sql_blocks=final_sql_blocks
     )
-    print(mode)
+
     # 3. Apply additional Public Read/Write permissions if mode is readwrite
     if mode == 'readwrite':
         process_permission_template(
