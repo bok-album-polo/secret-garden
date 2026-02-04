@@ -201,3 +201,57 @@ BEGIN
       AND domain = SESSION_USER; -- Scope deletion to the current tenant/domain
 END;
 $$;
+
+CREATE OR REPLACE FUNCTION group_admin_list_group_users(
+    p_username VARCHAR
+)
+RETURNS TABLE (
+    username VARCHAR
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+    v_domain VARCHAR;
+    v_pk_sequence VARCHAR;
+BEGIN
+    -- Check if the user has the 'group_admin' role
+    IF EXISTS (
+        SELECT 1 
+        FROM user_roles 
+        WHERE username = p_username 
+          AND role = 'group_admin'
+    ) THEN
+        -- Get the admin's domain and pk_sequence
+        SELECT domain, pk_sequence
+        INTO v_domain, v_pk_sequence
+        FROM users
+        WHERE users.username = p_username;
+
+        -- Return all users sharing the same domain and pk_sequence
+        RETURN QUERY
+        SELECT u.username
+        FROM users u
+        WHERE u.domain = v_domain
+          AND u.pk_sequence = v_pk_sequence;
+    END IF;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION group_admin_list_group_submissions(
+    p_username VARCHAR
+)
+RETURNS SETOF secret_room_submissions
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT DISTINCT ON (s.username) s.*
+    FROM secret_room_submissions s
+    JOIN group_admin_list_group_users(p_username) u ON s.username = u.username
+    ORDER BY s.username, s.created_at DESC;
+END;
+$$;
