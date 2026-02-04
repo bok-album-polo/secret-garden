@@ -19,6 +19,7 @@ class Controller
         } else {
 //            $this->redirect('/');
             error_log("View {$viewFile} not found");
+            echo("View {$viewFile} not found");
         }
 
         //pad file size by random amount
