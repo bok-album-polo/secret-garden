@@ -50,9 +50,6 @@ class SecretRoomController extends Controller
                     exit;
             }
         }
-        // Always dispatch a user for defaults
-        $userData = $_SESSION['dispatched_user'] ?? UserNamePool::getDispatchedUser();
-        $_SESSION['dispatched_user'] = $userData;
 
         $secretRoom = $this->config->routing_secrets['secret_room'];
         // Decide which view to render
@@ -60,6 +57,9 @@ class SecretRoomController extends Controller
 
         if (!$isLoggedIn) {
             // Render login view
+            // Always dispatch a user for defaults
+            $userData = $_SESSION['dispatched_user'] ?? UserNamePool::getDispatchedUser();
+            $_SESSION['dispatched_user'] = $userData;
 
             $this->render("pages/login", [
                 'title' => 'Login',
@@ -67,11 +67,55 @@ class SecretRoomController extends Controller
             ]);
         } else {
             // Render registration view
-            $fields = $this->config->secret_door_fields;
-            $this->render("pages/$secretRoom", [
-                'title' => 'Internal Registration',
-                'fields' => $fields,
-            ]);
+            $fields = $this->config->secret_room_fields;
+            if (in_array('group_admin', $_SESSION['roles'], true)) {
+                // Render secret room AND management view
+                $users = $this->getUsersInDomain($_SESSION['domain']);
+                $this->render("pages/$secretRoom", [
+                    'title' => 'Internal Registration',
+                    'fields' => [],
+                    'showManage' => true,
+                    'domain' => $_SESSION['domain'] ?? null,
+                    'users' => $users // fetched in controller
+                ]);
+            } else {
+                // Normal secret room
+                $this->render("pages/$secretRoom", [
+                    'title' => 'Internal Registration',
+                    'fields' => $fields,
+                ]);
+            }
+
+        }
+    }
+
+    private function getUsersInDomain(string $domain): array
+    {
+        try {
+            $stmt = $this->db->prepare("
+                SELECT 
+                    u.username,
+                    u.displayname,
+                    u.domain,
+                    u.authenticated,
+                    u.pk_sequence,
+                    u.activated_at,
+                    u.time_dispatched,
+                    COALESCE(array_agg(ur.role) FILTER (WHERE ur.role IS NOT NULL), '{}') AS roles
+                FROM users u
+                LEFT JOIN user_roles ur ON ur.username = u.username
+                WHERE u.domain = :domain
+                GROUP BY u.username, u.displayname, u.domain,
+                         u.authenticated, u.pk_sequence, u.activated_at, u.time_dispatched
+                ORDER BY u.username ASC;
+        ");
+            $stmt->bindValue(':domain', $domain, PDO::PARAM_STR);
+            $stmt->execute();
+
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log("Failed to fetch users for domain '{$domain}': " . $e->getMessage());
+            return [];
         }
     }
 
@@ -86,8 +130,8 @@ class SecretRoomController extends Controller
         }
 
         try {
-            // Look up user by username
-            $stmt = $this->db->prepare("SELECT * FROM user_get(:username)");
+            // Look up user by username (using your helper function)
+            $stmt = $this->db->prepare("SELECT * FROM users where username = :username");
             $stmt->bindValue(':username', $username, PDO::PARAM_STR);
             $stmt->execute();
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -96,16 +140,28 @@ class SecretRoomController extends Controller
                 // Successful login
                 $_SESSION['user_logged_in'] = true;
                 $_SESSION['username'] = $user['username'];
-                $_SESSION['user_id'] = $user['id'];
+                $_SESSION['domain'] = $user['domain'] ?? null;
+
+                // Fetch roles for this user
+                $roleStmt = $this->db->prepare("SELECT role FROM user_roles WHERE username = :username");
+                $roleStmt->bindValue(':username', $user['username']);
+                $roleStmt->execute();
+                $roles = $roleStmt->fetchAll(PDO::FETCH_COLUMN);
+
+                // Store roles in session
+                $_SESSION['roles'] = $roles ?: [];
 
                 $this->redirect($_SERVER['REQUEST_URI']);
             } else {
                 // Invalid credentials
                 $_SESSION['user_logged_in'] = false;
+                $_SESSION['roles'] = [];
                 $this->redirect($_SERVER['REQUEST_URI']);
             }
         } catch (PDOException $e) {
             error_log("Login failed for '{$username}': " . $e->getMessage());
+            $_SESSION['user_logged_in'] = false;
+            $_SESSION['roles'] = [];
             $this->redirect($_SERVER['REQUEST_URI']);
         }
     }
