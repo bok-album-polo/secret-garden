@@ -226,7 +226,7 @@ class SecretRoomController extends Controller
             $displayName = trim($_POST['displayname'] ?? '');
 
             $generatedPassword = $this->generatePassword();
-            $passwordHash = password_hash($generatedPassword, $this->getHashAlgorithm());
+            $passwordHash = password_hash($generatedPassword, $this->config->application_config['password_hash_algorithm']);
 
             $pkSequence = $_SESSION['pk_sequence'];
 
@@ -301,20 +301,6 @@ class SecretRoomController extends Controller
     }
 
 
-    private function getHashAlgorithm(): string
-    {
-        $algoFromConfig = strtolower($this->config->application_config['password_hash_algorithm']);
-
-        $algorithmMap = [
-            'bcrypt' => PASSWORD_BCRYPT,
-            'argon2i' => PASSWORD_ARGON2I,
-            'argon2id' => PASSWORD_ARGON2ID,
-            'default' => PASSWORD_DEFAULT,
-        ];
-
-        return $algorithmMap[$algoFromConfig] ?? PASSWORD_DEFAULT;
-    }
-
     /**
      * @throws RandomException
      */
@@ -338,7 +324,7 @@ class SecretRoomController extends Controller
         try {
             $username = $_POST['username'] ?? '';
             $newPassword = $this->generatePassword();
-            $hash = password_hash($newPassword, $this->getHashAlgorithm());
+            $hash = password_hash($newPassword, $this->config->application_config['password_hash_algorithm']);
 
             $stmt = $this->db->prepare("UPDATE users SET password = :password WHERE username = :username");
             $stmt->bindValue(':password', $hash);

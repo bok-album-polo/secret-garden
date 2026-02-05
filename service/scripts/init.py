@@ -87,7 +87,7 @@ CONFIG_SCHEMA = {
                 "pk_max_history": {"type": "integer", "minimum": 1},
                 "password_generated_length": {"type": "integer", "minimum": 1},
                 "password_generated_charset": {"type": "string"},
-                "password_hash_algorithm": {"type": "string", "enum": ["bcrypt", "argon2id", "plaintext"]},
+                "password_hash_algorithm": {"type": "string", "enum": ["PASSWORD_BCRYPT", "PASSWORD_ARGON2ID", "PASSWORD_PLAINTEXT"]},
                 "common_sequence_threshold": {"type": "number", "minimum": 0.0, "maximum": 1.0},
                 "file_upload_max_size_mb": {"type": "number", "minimum": 1},
                 "username_dispatch": {"type": "boolean"},
