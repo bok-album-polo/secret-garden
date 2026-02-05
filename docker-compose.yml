@@ -28,7 +28,7 @@ services:
       - POSTGRES_PASSWORD=fuelrod
     volumes:
       - db_data:/var/lib/postgresql/data
-      - ./system/service/database/initdb:/docker-entrypoint-initdb.d
+      - ./system/service/database:/docker-entrypoint-initdb.d
 
 volumes:
   db_data:
