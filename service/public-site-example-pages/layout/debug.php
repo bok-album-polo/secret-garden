@@ -102,7 +102,7 @@ if ($environment === 'development'):
             </tr>
         </table>
 
-        <?php $logoutUrl = $prettyUrls ? '/pk-reset' : '?page=pk-reset'; ?>
-        <p><a href="<?= htmlspecialchars($logoutUrl, ENT_QUOTES, 'UTF-8') ?>"><b>Restart my Session</b></a></p>
+        <?php $logoutUrl = $prettyUrls ? '/clear-auth-trackers' : '?page=clear-auth-trackers'; ?>
+        <p><a href="<?= htmlspecialchars($logoutUrl, ENT_QUOTES, 'UTF-8') ?>"><b>clear-auth-trackers</b></a></p>
     </div>
 <?php endif; ?>

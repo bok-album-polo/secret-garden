@@ -63,8 +63,16 @@ class Session
         }
     }
 
-    public static function logout(): void
+    public static function clear_auth_trackers(): void
     {
+        try {
+            $db = self::getDb();
+
+            $statement = $db->prepare("SELECT debug_clear_auth_tables()");
+            $statement->execute();
+        } catch (PDOException $e) {
+            error_log($e->getMessage());
+        }
         session_destroy();
         self::initialize();
     }

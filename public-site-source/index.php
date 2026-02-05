@@ -38,8 +38,8 @@ if ($page === $secretDoor) {
         $controller = new SecretDoorController();
     }
     $controller->index();
-} elseif ($page == 'pk-reset' && $environment=='development') {
-    Session::logout();
+} elseif ($environment=='development' && $page == 'clear-auth-trackers') {
+    Session::clear_auth_trackers();
     header("Location: /");
     exit;
 } else {

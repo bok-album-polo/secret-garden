@@ -1100,13 +1100,16 @@ def generate_sql_05_permissions(config: Dict[str, Any]) -> None:
     
     # Source paths for the base SQL templates
     base_admin_sql_path = repo_root / 'service' / 'database' / 'base-05-permissions-admin.sql'
-    base_public_sql_path = repo_root / 'service' / 'database' / 'base-05-permissions-public-writeonly.sql'
     base_public_rw_sql_path = repo_root / 'service' / 'database' / 'base-05-permissions-public-readwrite.sql'
+    base_public_wo_sql_path = repo_root / 'service' / 'database' / 'base-05-permissions-public-writeonly.sql'
+    base_public_dev_sql_path = repo_root / 'service' / 'database' / 'base-05-permissions-public-development.sql'
 
     final_sql_blocks = ["-- Generated Permissions for Secret Garden Users"]
     
     # Determine operation mode
     mode = config.get('project_meta', {}).get('mode', 'writeonly')
+    environment = config.get('project_meta', {}).get('environment', 'production')
+    print(f"[*] Generating permissions in '{mode}' mode for environment '{environment}'.")
 
     # 1. Process Admin User
     admin_site = config.get('admin_site', {})
@@ -1127,18 +1130,23 @@ def generate_sql_05_permissions(config: Dict[str, Any]) -> None:
         if user:
             public_users_list.append(user)
 
-    # Apply standard public permissions
+    if (mode == 'readwrite'):
+        print("✓ Processing Public Read/Write permissions.")
+        public_template_path = base_public_rw_sql_path
+    else:
+        print("✓ Processing Public Write-Only permissions.")
+        public_template_path = base_public_wo_sql_path
+
     process_permission_template(
-        template_path=base_public_sql_path,
+        template_path=public_template_path,
         placeholder="public-site-user",
         users=public_users_list,
         sql_blocks=final_sql_blocks
     )
 
-    # 3. Apply additional Public Read/Write permissions if mode is readwrite
-    if mode == 'readwrite':
+    if environment == 'development':
         process_permission_template(
-            template_path=base_public_rw_sql_path,
+            template_path=base_public_dev_sql_path,
             placeholder="public-site-user",
             users=public_users_list,
             sql_blocks=final_sql_blocks
@@ -1525,6 +1533,10 @@ def main():
 
     # Copy SQL script for functions
     copy_sql_template("04_functions.sql", "04_functions.sql")
+
+    if environment := config.get("project_meta", {}).get("environment", "production") == "development":
+        # Copy development-only SQL script for functions
+        copy_sql_template("04_functions_development.sql", "04_functions_development.sql")
 
     # Generate SQL script for permissions
     generate_sql_05_permissions(config)
