@@ -144,7 +144,7 @@ class Session
     }
 
     public static function runAuthenticationSequence(): void
-    {
+{
 
         $config = self::getConfig();
         $db = self::getDb();
@@ -244,7 +244,7 @@ class Session
                 exit;
             } else {
                 // Step 8: Ban if history exceeds max
-                if (count($_SESSION['pk_history']) > $pk_max_history) {
+                if (count($_SESSION['pk_history']) >= $pk_max_history) {
                     self::banIp('Exceeded pk_max_history', 1, '1 hours');
                 }
             }
