@@ -590,6 +590,8 @@ def generate_public_config_php(config: Dict[str, Any]) -> None:
         site['tripwire_pages'] = tripwire
         payload['tripwire_pages'] = tripwire
 
+        print(f"  {domain}: Generated {len(tripwire)} tripwire pages: {tripwire}")
+
         # Merge root-level secret_door_fields into the site's secret_door_fields.
         # - Fill missing attributes (html_type, maxlength, etc.) from root by matching `name`.
         # - Append any root fields missing entirely from the site so each site has the full set.
@@ -801,6 +803,7 @@ def generate_pk_sequences(config: Dict[str, Any]) -> None:
     repo_root = REPO_ROOT if REPO_ROOT is not None else (BUILD_DIR.parent if BUILD_DIR is not None else Path(__file__).resolve().parents[2])
     build_dir = BUILD_DIR if BUILD_DIR is not None else (repo_root / 'build')
 
+    environment = config.get("project_meta", {}).get("environment", "production")
     app_config = config.get("application_config", {})
     pk_length = app_config.get("pk_length", 5)
     common_sequence_threshold = app_config.get("common_sequence_threshold", 0.0)
@@ -862,7 +865,7 @@ def generate_pk_sequences(config: Dict[str, Any]) -> None:
         # 3. Generate Unique Sequences
         site_sequences = set()
         attempts = 0
-        while len(site_sequences) < num_sequences_per_site and attempts < 5000:
+        while environment == 'production' and len(site_sequences) < num_sequences_per_site and attempts < 5000: # Limit attempts to avoid infinite loops
             seq_digits = []
             digit = last_digit = None
             
@@ -885,6 +888,20 @@ def generate_pk_sequences(config: Dict[str, Any]) -> None:
                         continue  # Discard and try again
                 site_sequences.add(candidate_seq)
             attempts += 1
+        
+        # Generate sequence if environment is development
+        if environment == 'development':
+            # 1. Sort valid indices (descending)
+            sorted_indices = sorted(valid_indices, reverse=True)
+
+            # 2. Generate sequence, repeating indices if necessary to fill pk_length
+            seq_digits = []
+            while len(seq_digits) < pk_length:
+                seq_digits.extend(sorted_indices)
+            
+            candidate_seq = "".join(str(d) for d in seq_digits[:pk_length])
+            print(f"  [DEV] Generated sequence for {domain}: {candidate_seq}")
+            site_sequences.add(candidate_seq)
 
         for s in site_sequences:
             all_generated_pairs.append((domain, s))
