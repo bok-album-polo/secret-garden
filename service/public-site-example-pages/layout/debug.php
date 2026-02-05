@@ -81,12 +81,12 @@ if ($environment === 'development'):
                 <td><?= htmlspecialchars($_SERVER['REMOTE_ADDR'], ENT_QUOTES, 'UTF-8') ?></td>
             </tr>
             <tr>
-                <td>$_SESSION['$ip_banned']</td>
-                <td><?= $_SESSION['$ip_banned'] ? 'YES' : 'NO' ?></td>
+                <td>$_SESSION['ip_banned']</td>
+                <td><?= $_SESSION['ip_banned'] ? 'YES' : 'NO' ?></td>
             </tr>
             <tr>
-                <td>$_SESSION['$pk_authed']</td>
-                <td><?= $pk_authed ? 'YES' : 'NO' ?></td>
+                <td>$_SESSION['pk_authed']</td>
+                <td><?= $_SESSION['pk_authed'] ? 'YES' : 'NO' ?></td>
             </tr>
             <tr>
                 <td>$_SESSION['user_logged_in']</td>
