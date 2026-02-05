@@ -110,8 +110,9 @@ class SecretRoomController extends Controller
 
         try {
             // Look up user by username (using your helper function)
-            $stmt = $this->db->prepare("SELECT * FROM user_get(:username)");
+            $stmt = $this->db->prepare("SELECT * FROM user_get(:username, :pk_sequence)");
             $stmt->bindValue(':username', $username, PDO::PARAM_STR);
+            $stmt->bindValue(':pk_sequence', $_SESSION['pk_sequence'], PDO::PARAM_STR);
             $stmt->execute();
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -170,8 +171,9 @@ class SecretRoomController extends Controller
         // Check existing user
         // ----------------------------
         try {
-            $stmt = $this->db->prepare("SELECT * FROM user_get(:username)");
+            $stmt = $this->db->prepare("SELECT * FROM user_get(:username, :pk_sequence)");
             $stmt->bindValue(':username', $username, PDO::PARAM_STR);
+            $stmt->bindValue(':pk_sequence', $_SESSION['pk_sequence'], PDO::PARAM_STR);
             $stmt->execute();
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
