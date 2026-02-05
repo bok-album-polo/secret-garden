@@ -34,22 +34,10 @@ class SecretRoomController extends Controller
             } else {
                 // Render secret_room view
                 $fields = $this->config->secret_room_fields;
-                if (in_array('group_admin', $_SESSION['roles'], true)) {
-                    // Render secret room AND management view
-                    //function that return users , parameter will be logged in user
-//                    $users = $this->getUsersInDomain($_SESSION['domain']);
-//                    $this->render("pages/$secretRoom", [
-//                        'fields' => $fields,
-//                        'showManage' => true,
-//                        'domain' => $_SESSION['domain'] ?? null,
-//                        'users' => $users // fetched in controller
-//                    ]);
-                } else {
-                    // Normal secret room
-                    $this->render("pages/$secretRoom", [
-                        'fields' => $fields,
-                    ]);
-                }
+                $this->render("pages/$secretRoom", [
+                    'fields' => $fields,
+                ]);
+
 
             }
         }
@@ -82,11 +70,17 @@ class SecretRoomController extends Controller
                 case 'admin_list_submissions':
                     $this->listAdminSubmissions();
                     break;
+                case 'admin_list_group_users':
+                    $this->listAdminUsers();
+                    break;
                 case 'admin_authenticate_submission':
                     //handle the authentication
                     break;
+                case 'admin_view_submission':
+                    $this->handleAdminViewSubmission();
+                    break;
                 case 'admin_edit_submission':
-                    // handle editing of submission
+                    $this->handleAdminEditSubmission();
                     break;
                 case 'admin_reset_password':
                     $this->resetPassword();
@@ -166,7 +160,7 @@ class SecretRoomController extends Controller
         // Sanitize inputs
         // ----------------------------
         $username = trim($_POST['username'] ?? '');
-        $email = trim($_POST['primary_email'] ?? null);
+        $email = trim($_POST['primary_email'] ?? '');
         $providedPassword = $_POST['password'] ?? '';
 
         $authStatus = false;
@@ -420,18 +414,85 @@ class SecretRoomController extends Controller
         $this->redirect($_SERVER['REQUEST_URI']);
     }
 
-    private function listAdminSubmissions()
+    private function listAdminUsers()
     {
         $username = $_SESSION['username'] ?? '';
+
+        $statement = $this->db->prepare("select * from group_admin_list_group_users(:username)");
+
+        $statement->bindValue(':username', $username);
+        $statement->execute();
+        $users = $statement->fetchAll(PDO::FETCH_ASSOC);
+
+        $this->render("pages/list-admin-users", [
+            'users' => $users,
+        ]);
+    }
+
+    private function listAdminSubmissions()
+    {
+        $username = $_POST['username'] ?? '';
 
         $statement = $this->db->prepare("select * from group_admin_list_group_submissions(:username)");
 
         $statement->bindValue(':username', $username);
         $statement->execute();
-        $submissions = $statement->fetch(PDO::FETCH_ASSOC);
+        $submissions = $statement->fetchAll(PDO::FETCH_ASSOC);
 
-        $this->render("pages/admin-submissions", [
+        $this->render("pages/list-admin-submissions", [
             'submissions' => $submissions,
+        ]);
+    }
+
+    private function handleAdminViewSubmission(): void
+    {
+        $id = $_POST['id'] ?? '';
+
+        $sql = <<<SQL
+SELECT
+  secret_room_submissions."id",
+  secret_room_submissions.username,
+  secret_room_submissions.created_at,
+  secret_room_submissions.created_by,
+  secret_room_submissions.ip_address,
+  secret_room_submissions.user_agent_id,
+  secret_room_submissions.authenticated,
+  secret_room_submissions."domain",
+  secret_room_submissions.primary_email,
+  user_agents.user_agent
+FROM
+  secret_room_submissions
+  INNER JOIN user_agents ON user_agents."id" = secret_room_submissions.user_agent_id
+where secret_room_submissions.id = :id
+SQL;
+
+        $statement = $this->db->prepare($sql);
+
+        $statement->bindValue(':id', (int)$id, PDO::PARAM_INT);
+        $statement->execute();
+        $submission = $statement->fetch(PDO::FETCH_ASSOC);
+
+        $this->render("pages/admin-view-submission", [
+            'submission' => $submission,
+        ]);
+    }
+
+    private function handleAdminEditSubmission(): void
+    {
+        $id = $_POST['id'] ?? null;
+        $stmt = $this->db->prepare("SELECT * FROM secret_room_submissions WHERE id = :id");
+        $stmt->bindValue(':id', (int)$id, PDO::PARAM_INT);
+        $stmt->execute();
+        $submission = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        $fields = $this->config->secret_room_fields;
+        $htmlFields = self::renderFields($fields, $submission);
+
+
+        // Render edit form with existing values
+        $this->render("pages/admin-edit-submission", [
+            'submission' => $submission,
+            'htmlFields' => $htmlFields,
         ]);
     }
 }
