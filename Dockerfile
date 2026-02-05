@@ -32,9 +32,6 @@ WORKDIR /var/www
 # Copy application code
 COPY public-site-source/. /var/www
 
-# Ensure config.php is present (fallback to example if missing)
-RUN if [ ! -f /var/www/config/config.php ]; then cp /var/www/config/config-example.php /var/www/config/config.php; fi
-
 # Copy configurations
 COPY docker/nginx/default.conf /etc/nginx/http.d/default.conf
 COPY docker/supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
