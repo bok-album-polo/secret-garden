@@ -93,8 +93,8 @@ if ($environment === 'development'):
                 <td><?= $_SESSION['user_logged_in'] ? 'YES' : 'NO' ?></td>
             </tr>
             <tr>
-                <td>Session User</td>
-                <td><?= htmlspecialchars(App\Controllers\Session::sessionUser(), ENT_QUOTES, 'UTF-8') ?></td>
+                <td>dbUserInfo</td>
+                <td><?= htmlspecialchars(App\Controllers\Database::dbUserInfo(), ENT_QUOTES, 'UTF-8') ?></td>
             </tr>
             <tr>
                 <td>Pretty URLs</td>

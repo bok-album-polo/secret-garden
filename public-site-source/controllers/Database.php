@@ -42,4 +42,16 @@ class Database
 
         return self::$instance;
     }
+
+    public static function dbUserInfo(): string
+    {
+        $data = [];
+        try {
+            $stmt = self::getDb()->query("SELECT SESSION_USER, CURRENT_USER");
+            $data = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+        } catch (PDOException $e) {
+            error_log("Session user query failed: " . $e->getMessage());
+        }
+        return json_encode($data);
+    }
 }
