@@ -3,17 +3,6 @@ $config = App\Controllers\Config::instance();
 $environment = $config->project_meta['environment'] ?? 'production';
 
 if ($environment === 'development'):
-    $pk_auth = $_SESSION['pk_authed'] ?? false;
-    $is_pk_banned = $_SESSION['pk_ban'] ?? false;
-    $is_ip_banned = $_SESSION['ip_banned'] ?? false;
-    $user_logged_in = $_SESSION['user_logged_in'] ?? false;
-    $prettyUrls = $config->project_meta['pretty_urls'] ?? false;
-    $secretDoor = $config->routing_secrets['secret_door'] ?? 'contact';
-    $secretRoom = $config->routing_secrets['secret_room'] ?? 'registration';
-    $pkLength = $config->application_config['pk_length'] ?? 5;
-    $pkMaxHistory = $config->application_config['pk_max_history'] ?? 20;
-    $domain = $config->domain ?? 'N/A';
-    $dbUser = $config->db_credentials['user'] ?? 'N/A';
     ?>
     <style>
         #debug-panel {
@@ -46,68 +35,62 @@ if ($environment === 'development'):
                 <th>Value</th>
             </tr>
             <tr>
-                <td>Domain</td>
-                <td><?= htmlspecialchars($domain, ENT_QUOTES, 'UTF-8') ?></td>
+                <td>$config->domain</td>
+                <td><?= htmlspecialchars($config->domain, ENT_QUOTES, 'UTF-8') ?></td>
             </tr>
             <tr>
-                <td>Database User</td>
-                <td><?= htmlspecialchars($dbUser, ENT_QUOTES, 'UTF-8') ?></td>
+                <td>$config->db_credentials['user']</td>
+                <td><?= htmlspecialchars($config->db_credentials['user'], ENT_QUOTES, 'UTF-8') ?></td>
             </tr>
             <tr>
-                <td>Secret Door</td>
-                <td><?= htmlspecialchars($secretDoor, ENT_QUOTES, 'UTF-8') ?></td>
+                <td>$config->routing_secrets['secret_door']</td>
+                <td><?= htmlspecialchars($config->routing_secrets['secret_door'], ENT_QUOTES, 'UTF-8') ?></td>
             </tr>
             <tr>
-                <td>Secret Room</td>
-                <td><?= htmlspecialchars($secretRoom, ENT_QUOTES, 'UTF-8') ?></td>
+                <td>$config->routing_secrets['secret_room']</td>
+                <td><?= htmlspecialchars($config->routing_secrets['secret_room'], ENT_QUOTES, 'UTF-8') ?></td>
             </tr>
             <tr>
-                <td>Sequence Length</td>
-                <td><?= $pkLength ?></td>
+                <td>$config->application_config['pk_length']</td>
+                <td><?= $config->application_config['pk_length'] ?></td>
             </tr>
             <tr>
-                <td>PK History</td>
+                <td>$_SESSION['pk_history']</td>
                 <td><?= htmlspecialchars(implode('', $_SESSION['pk_history'] ?? []), ENT_QUOTES, 'UTF-8') ?></td>
             </tr>
             <tr>
-                <td>PK Max History</td>
-                <td><?= $pkMaxHistory ?></td>
+                <td>$config->application_config['pk_max_history']</td>
+                <td><?= $config->application_config['pk_max_history'] ?></td>
             </tr>
             <tr>
-                <td>PK History Length</td>
+                <td>count($_SESSION['pk_history'] ?? [])</td>
                 <td><?= count($_SESSION['pk_history'] ?? []) ?></td>
             </tr>
             <tr>
-                <td>PK Banned</td>
-                <td><?= $is_pk_banned ? 'YES' : 'NO' ?></td>
-            </tr>
-            <tr>
-                <td>PK Sequence</td>
+                <td>$_SESSION['pk_sequence']</td>
                 <td>
                     <?= htmlspecialchars(
-                            $pk_auth
-                                    ? ($_SESSION['pk_sequence'] ?? 'N/A')
-                                    : implode('', array_slice($_SESSION['pk_history'] ?? [], -$pkLength)),
+                            $_SESSION['pk_sequence'] ?? 'N/A',
                             ENT_QUOTES,
                             'UTF-8'
                     ) ?>
                 </td>
             </tr>
             <tr>
-                <td>IP Address</td>
+                <td>$_SERVER['REMOTE_ADDR']</td>
                 <td><?= htmlspecialchars($_SERVER['REMOTE_ADDR'], ENT_QUOTES, 'UTF-8') ?></td>
             </tr>
             <tr>
-                <td>IP Banned</td>
-                <td><?= $is_ip_banned ? 'YES' : 'NO' ?></td>
+                <td>$_SESSION['$ip_banned']</td>
+                <td><?= $_SESSION['$ip_banned'] ? 'YES' : 'NO' ?></td>
             </tr>
             <tr>
-                <td>Authenticated</td>
-                <td><?= $pk_auth ? 'YES' : 'NO' ?></td>
+                <td>$_SESSION['$pk_authed']</td>
+                <td><?= $pk_authed ? 'YES' : 'NO' ?></td>
             </tr>
             <tr>
-                <td>User logged in</td>
-                <td><?= $user_logged_in ? 'YES' : 'NO' ?></td>
+                <td>$_SESSION['user_logged_in']</td>
+                <td><?= $_SESSION['user_logged_in'] ? 'YES' : 'NO' ?></td>
             </tr>
             <tr>
                 <td>Session User</td>
