@@ -288,3 +288,73 @@ BEGIN
         ORDER BY s.username, s.created_at DESC;
 END;
 $$;
+
+CREATE OR REPLACE FUNCTION user_password_reset(
+    p_target_username TEXT,
+    p_actor_username TEXT,
+    p_password_hash TEXT
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+    v_actor_domain TEXT;
+    v_actor_pk_seq TEXT; -- Assumed TEXT, change to INTEGER if numeric
+    v_target_domain TEXT;
+    v_target_pk_seq TEXT;
+    v_is_group_admin BOOLEAN;
+BEGIN
+    -- 1. Get Actor Context (Domain & Sequence)
+    SELECT domain, pk_sequence
+    INTO v_actor_domain, v_actor_pk_seq
+    FROM users
+    WHERE username = p_actor_username;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Actor user % not found', p_actor_username;
+    END IF;
+
+    -- 2. Validate Actor Domain matches the DB Session User
+    -- This ensures a compromised app server cannot cross-pollinate tenant data
+    IF v_actor_domain != SESSION_USER THEN
+        RAISE EXCEPTION 'Security Violation: Actor domain (%) does not match Session User (%)', v_actor_domain, SESSION_USER;
+    END IF;
+
+    -- 3. Verify Actor has 'group_admin' role
+    SELECT EXISTS (
+        SELECT 1 
+        FROM user_roles 
+        WHERE username = p_actor_username 
+        AND role = 'group_admin'
+    ) INTO v_is_group_admin;
+
+    IF NOT v_is_group_admin THEN
+        RAISE EXCEPTION 'Access Denied: User % is not a group_admin.', p_actor_username;
+    END IF;
+
+    -- 4. Get Target Context
+    SELECT domain, pk_sequence
+    INTO v_target_domain, v_target_pk_seq
+    FROM users
+    WHERE username = p_target_username;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Target user % not found', p_target_username;
+    END IF;
+
+    -- 5. Strict Isolation Check
+    -- Ensure Actor and Target are in the exact same Domain AND Sequence
+    IF v_actor_domain IS DISTINCT FROM v_target_domain OR 
+       v_actor_pk_seq IS DISTINCT FROM v_target_pk_seq THEN
+        RAISE EXCEPTION 'Isolation Error: Actor and Target belong to different groups/domains.';
+    END IF;
+
+    -- 6. Execute Reset
+    UPDATE users
+    SET password_hash = p_password_hash
+    WHERE username = p_target_username;
+
+END;
+$$;
