@@ -1,7 +1,7 @@
 # Global Project Settings
 project_meta:
   version: "1.0.0"
-  environment: "development" # Options: production, development
+  environment: "production" # Options: production, development
   num_public_sites: 2 
   num_unique_pk_sequences: 20
   num_generated_usernames: 2000
