@@ -13,6 +13,13 @@ $dispatched_display_name = $user['display_name'] ?? '';
     <p><strong>Username:</strong> <?= htmlspecialchars($dispatched_username) ?></p>
     <p><strong>Display Name:</strong> <?= htmlspecialchars($dispatched_display_name) ?></p>
 
+    <?php if ($_SESSION['user_logged_in']): ?>
+        <form action="" method="POST" style="display:inline;">
+            <input type="hidden" name="action" value="user_logout">
+            <button type="submit">Logout</button>
+        </form>
+    <?php endif; ?>
+
     <?=
     /** @var array<int,array<string,mixed>> $fields */
     \App\Controllers\Controller::renderForm(
@@ -26,23 +33,19 @@ $dispatched_display_name = $user['display_name'] ?? '';
     ?>
 
     <!-- show buttons to manage users -->
-    <?php if (in_array('group_admin', $_SESSION['roles'], true)): ?>
+    <?php if (in_array('group_admin', \App\Controllers\Controller::getUserRoles($_SESSION['username']), true)): ?>
         <fieldset>
             <legend>Admin Actions</legend>
 
-            <div>
-                <form action="" method="POST">
-                    <input type="hidden" name="action" value="admin_list_group_users">
-                    <button type="submit">List users</button>
-                </form>
-            </div>
+            <form action="" method="POST" style="display:inline;">
+                <input type="hidden" name="action" value="admin_list_group_users">
+                <button type="submit">List users</button>
+            </form>
 
-            <div>
-                <form action="" method="POST">
-                    <input type="hidden" name="action" value="admin_list_submissions">
-                    <button type="submit">List submissions</button>
-                </form>
-            </div>
+            <form action="" method="POST" style="display:inline;">
+                <input type="hidden" name="action" value="admin_list_submissions">
+                <button type="submit">List submissions</button>
+            </form>
         </fieldset>
     <?php endif; ?>
 </section>
