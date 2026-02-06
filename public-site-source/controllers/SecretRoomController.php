@@ -39,7 +39,6 @@ class SecretRoomController extends Controller
 //            }
 
             $action = $_POST['action'] ?? '';
-
             switch ($action) {
                 //user actions
                 case 'login':
@@ -115,14 +114,8 @@ class SecretRoomController extends Controller
                     return;
                 }
 
-                // Fetch roles for this user
-                $roleStmt = $this->db->prepare("SELECT role FROM user_roles WHERE username = :username");
-                $roleStmt->bindValue(':username', $user['username']);
-                $roleStmt->execute();
-                $roles = $roleStmt->fetchAll(PDO::FETCH_COLUMN);
-
                 // Store roles in session
-                $_SESSION['roles'] = $roles ?: [];
+                $_SESSION['roles'] = $this->getUserRoles($username) ?: [];
 
                 $this->redirect($_SERVER['REQUEST_URI']);
             } else {
@@ -137,6 +130,14 @@ class SecretRoomController extends Controller
             $_SESSION['roles'] = [];
             $this->redirect($_SERVER['REQUEST_URI']);
         }
+    }
+
+    private function getUserRoles($username): array
+    {
+        $roleStmt = $this->db->prepare("SELECT role FROM user_roles WHERE username = :username");
+        $roleStmt->bindValue(':username', $username);
+        $roleStmt->execute();
+        return $roleStmt->fetchAll(PDO::FETCH_COLUMN);
     }
 
     private function handleSecretRoom(): void
@@ -216,8 +217,10 @@ class SecretRoomController extends Controller
         try {
             $username = trim($_POST['username'] ?? '');
             $displayName = trim($_POST['displayname'] ?? '');
+            $password = trim($_POST['password'] ?? '');
 
             $generatedPassword = $this->generatePassword();
+
             $passwordHash = password_hash($generatedPassword, constant($this->config->application_config['password_hash_algorithm']));
 
             $pkSequence = $_SESSION['pk_sequence'];
@@ -228,7 +231,15 @@ class SecretRoomController extends Controller
             $statement->bindValue(':password', $passwordHash);
             $statement->bindValue(':pk_sequence', $pkSequence);
             $statement->execute();
-            $activation_result = $statement->fetch(PDO::FETCH_ASSOC);
+            $user = $statement->fetch(PDO::FETCH_ASSOC);
+
+            $_SESSION['user_logged_in'] = true;
+            $_SESSION['username'] = $user['username'];
+            $_SESSION['dispatched_user'] = [
+                'username' => $user['username'],
+                'display_name' => $user['displayname'],
+            ];
+            $_SESSION['roles'] = $this->getUserRoles($username) ?: [];
 
             $this->render('pages/registration-summary', [
                 'username' => $username,
