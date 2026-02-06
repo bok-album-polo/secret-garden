@@ -1,6 +1,7 @@
 <?php
 $config = App\Controllers\Config::instance();
 $environment = $config->project_meta['environment'] ?? 'production';
+$prettyUrls = $config->project_meta['pretty_urls'] ?? false;
 
 if ($environment === 'development'):
     ?>
