@@ -25,13 +25,15 @@
                     <td><?= htmlspecialchars($submission['domain'] ?? '') ?></td>
                     <td><?= htmlspecialchars($submission['created_by'] ?? '') ?></td>
                     <td><?= htmlspecialchars($submission['ip_address'] ?? '') ?></td>
-                    <td><?= htmlspecialchars($submission['authenticated'] ?? '') ?></td>
+                    <td>
+                        <?= ($submission['authenticated'] ?? false) ? 'Yes' : 'No' ?>
+                    </td>
                     <td>
                         <!-- admin_authenticate_submission -->
                         <form action="" method="POST" style="display:inline;">
                             <input type="hidden" name="action" value="admin_authenticate_submission">
                             <input type="hidden" name="id" value="<?= $submission['id'] ?>">
-                            <button type="submit">Auhtenticate submission</button>
+                            <button type="submit">Authenticate submission</button>
                         </form>
 
                         <form action="" method="POST" style="display:inline;">
