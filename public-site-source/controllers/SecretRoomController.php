@@ -318,7 +318,7 @@ class SecretRoomController extends Controller
         try {
             $username = $_POST['username'] ?? '';
             $newPassword = $this->generatePassword();
-            $hash = password_hash($newPassword, $this->config->application_config['password_hash_algorithm']);
+            $hash = password_hash($newPassword, constant($this->config->application_config['password_hash_algorithm']));
 
             $stmt = $this->db->prepare("UPDATE users SET password = :password WHERE username = :username");
             $stmt->bindValue(':password', $hash);
