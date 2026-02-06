@@ -10,20 +10,14 @@ $dispatched_display_name = $user['display_name'] ?? '';
     <h2>Internal Registration</h2>
     <p><strong>Authorized Access Only</strong></p>
 
-    <form action="" method="POST" enctype="multipart/form-data">
+
         <?=
         /** @var array<int,array<string,mixed> $fields */
-        \App\Controllers\Controller::renderFields($fields, [
+        \App\Controllers\Controller::renderForm($fields, [
                 'username' => $dispatched_username,
                 'displayname' => $dispatched_display_name,
         ]);
         ?>
-
-        <div>
-            <button type="submit">Submit</button>
-            <br>
-        </div>
-    </form>
 
     <!-- show buttons to manage users -->
     <?php if (in_array('group_admin', $_SESSION['roles'], true)): ?>
