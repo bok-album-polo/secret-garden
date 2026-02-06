@@ -526,6 +526,7 @@ def generate_public_config_php(config: Dict[str, Any]) -> None:
             'host': site_db_server.get('host') or db_server.get('host', '127.0.0.1'),
             'port': site_db_server.get('port') or db_server.get('port', 5432),
             'db_name': site_db_server.get('db_name') or db_server.get('db_name', 'secret_garden_v2')
+            'ssl_mode': site_db_server.get('ssl_mode') or db_server.get('ssl_mode', 'disable')
         }
 
         # Ensure db_credentials exists (fallback to empty if not provided)
