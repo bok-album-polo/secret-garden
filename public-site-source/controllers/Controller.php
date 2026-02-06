@@ -73,6 +73,7 @@ class Controller
         $roleStmt->execute();
         return $roleStmt->fetchAll(PDO::FETCH_COLUMN);
     }
+
     /**
      * Render form fields with optional default values.
      *
@@ -97,9 +98,6 @@ class Controller
         $html .= '<input type="hidden" name="csrf_token" value="'
             . htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') . '">';
 
-        $html .= '<fieldset>';
-        $html .= '<legend>Submission Form</legend>';
-
         foreach ($fields as $field) {
             $name = htmlspecialchars($field['name'], ENT_QUOTES, 'UTF-8');
             $label = htmlspecialchars($field['label'] ?? ucfirst($name), ENT_QUOTES, 'UTF-8');
@@ -108,31 +106,37 @@ class Controller
 
             $required = !empty($field['required']) ? ' required' : '';
             $maxlength = isset($field['maxlength']) ? ' maxlength="' . (int)$field['maxlength'] . '"' : '';
+            $readonly = !empty($field['readonly']) ? ' readonly' : '';
+
+            // Hidden fields: no label or wrapper
+            if ($type === 'hidden') {
+                $html .= "<input type=\"hidden\" name=\"{$name}\" value=\"{$value}\">";
+                continue;
+            }
 
             $html .= '<div>';
             $html .= "<label for=\"{$name}\">{$label}</label><br>";
 
             if ($type === 'textarea') {
-                $html .= "<textarea id=\"{$name}\" name=\"{$name}\"{$required}{$maxlength}>{$value}</textarea>";
+                $html .= "<textarea id=\"{$name}\" name=\"{$name}\"{$required}{$maxlength}{$readonly}>{$value}</textarea>";
             } elseif ($type === 'file') {
                 $html .= "<input type=\"file\" id=\"{$name}\" name=\"{$name}\"{$required}>";
             } else {
-                $html .= "<input type=\"{$type}\" id=\"{$name}\" name=\"{$name}\" value=\"{$value}\"{$required}{$maxlength}>";
+                $html .= "<input type=\"{$type}\" id=\"{$name}\" name=\"{$name}\" value=\"{$value}\"{$required}{$maxlength}{$readonly}>";
             }
 
             if (!empty($field['help_text'])) {
                 $help = htmlspecialchars($field['help_text'], ENT_QUOTES, 'UTF-8');
-                $html .= "<p><small>{$help}</small></p>";
+                $html .= "<br><small>{$help}</small>";
             }
 
             $html .= '</div>';
         }
 
         $html .= '<div>';
-        $html .= '<button type="submit">Submit</button>';
+        $html .= '<button type="submit" style="margin-top: 1em;">Submit</button>';
         $html .= '</div>';
 
-        $html .= '</fieldset>';
         $html .= '</form>';
 
         return $html;
