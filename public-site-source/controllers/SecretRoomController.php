@@ -77,7 +77,7 @@ class SecretRoomController extends Controller
                     $this->listAdminUsers();
                     break;
                 case 'admin_authenticate_submission':
-                    //handle the authentication
+                    $this->handleAdminAuthenticateSubmission();
                     break;
                 case 'admin_view_submission':
                     $this->handleAdminViewSubmission();
@@ -87,12 +87,6 @@ class SecretRoomController extends Controller
                     break;
                 case 'admin_reset_password':
                     $this->resetPassword();
-                    break;
-                case 'deactivate_user':
-                    $this->deactivateUser();
-                    break;
-                case 'toggle_role':
-                    $this->toggleGroupAdmin();
                     break;
                 default:
                     $this->handleSecretRoom(); // fallback for other POSTs
@@ -432,6 +426,23 @@ class SecretRoomController extends Controller
 
         $this->render("pages/list-admin-submissions", [
             'submissions' => $submissions,
+        ]);
+    }
+
+    private function handleAdminAuthenticateSubmission(): void
+    {
+        $id = $_POST['id'] ?? '';
+
+        $sql = "UPDATE secret_room_submissions set authenticated = 1 where id = :id";
+
+        $statement = $this->db->prepare($sql);
+
+        $statement->bindValue(':id', (int)$id, PDO::PARAM_INT);
+        $statement->execute();
+        $submission = $statement->fetch(PDO::FETCH_ASSOC);
+
+        $this->render("pages/admin-view-submission", [
+            'submission' => $submission,
         ]);
     }
 
