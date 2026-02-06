@@ -8,14 +8,6 @@ use RuntimeException;
 
 class SecretDoorController extends Controller
 {
-    private Config $config;
-    private PDO $db;
-
-    public function __construct()
-    {
-        $this->config = Config::instance();
-        $this->db = Database::getInstance();
-    }
 
     public function index(): void
     {
@@ -37,7 +29,7 @@ class SecretDoorController extends Controller
         // ----------------------------
         // Honeypot check - ban IP
         // ----------------------------
-        $this->banIpAddress($_SERVER['REMOTE_ADDR'], 'Secret Door Triggered');
+        Session::banIp('Secret Door Triggered');
 
         // ----------------------------
         // Basic validation
@@ -63,58 +55,24 @@ class SecretDoorController extends Controller
         // ----------------------------
         // Persist submission
         // ----------------------------
-        $this->recordSecretDoorSubmission($name, $email, $message, $uploadedFile);
-    }
+        $fields = $this->config->secret_door_fields;
+        $user_agent_id = Session::getUserAgentId($_SERVER['HTTP_USER_AGENT']);
+        $data = [
+            'message' => $message,
+            'name' => $uploadedFile['name'] ?? null,
+            'file' => $uploadedFile['data'] ?? null,
+            'email' => $email,
+            'user_agent_id' => $user_agent_id,
+            'ip_address' => $_SERVER['REMOTE_ADDR'],
+        ];
 
-    private function banIpAddress(string $ipAddress, string $reason, int $riskScore = 1): void
-    {
-        try {
-            $stmt = $this->db->prepare("
-            SELECT public.ip_ban_ban(
-                :ip_address::inet,
-                :reason,
-                :risk_score,
-                NOW() + INTERVAL '24 hours'
-            )
-        ");
 
-            $stmt->bindValue(':ip_address', $ipAddress);
-            $stmt->bindValue(':reason', $reason);
-            $stmt->bindValue(':risk_score', $riskScore, PDO::PARAM_INT);
+        $fields = array_merge($fields, [
+            ['name' => 'ip_address'],
+            ['name' => 'user_agent_id'],
+        ]);
 
-            $stmt->execute();
-        } catch (PDOException $e) {
-            error_log("IP ban function failed for '$ipAddress': " . $e->getMessage());
-        }
-    }
-
-    private function recordSecretDoorSubmission(
-        string $name,
-        string $email,
-        string $message,
-        ?array $uploadedFile
-    ): void
-    {
-        try {
-            $stmt = $this->db->prepare("
-                INSERT INTO secret_door_submissions
-                (name, email, message, ip_address, file, name,user_agent_id)
-                VALUES
-                (:name, :email, :message, :ip_address, :uploaded_file, :uploaded_file_name,:user_agent_id)
-            ");
-
-            $stmt->bindValue(':name', $name);
-            $stmt->bindValue(':email', $email);
-            $stmt->bindValue(':message', $message);
-            $stmt->bindValue(':ip_address', $_SERVER['REMOTE_ADDR']);
-            $stmt->bindValue(':user_agent_id', substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 512));
-            $stmt->bindValue(':uploaded_file', $uploadedFile['data'] ?? null, PDO::PARAM_LOB);
-            $stmt->bindValue(':uploaded_file_name', $uploadedFile['name'] ?? null);
-
-            $stmt->execute();
-        } catch (PDOException $e) {
-            error_log("Contact form submission failed: " . $e->getMessage());
-        }
+        $this->recordSubmission(fields: $fields, data: $data);
     }
 
     private function handleFileUploadToDb(string $inputName): ?array
