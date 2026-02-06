@@ -40,8 +40,15 @@ $pagesMenu = $config->pages_menu ?? [];
 <hr>
 
 <main>
-    <?php /** @var string $viewFile */
-    require $viewFile; ?>
+    <?php if (!empty($_SESSION['flash_message'])): ?>
+        <p style="font-weight: bold;color: #ff211a">
+            <?= htmlspecialchars($_SESSION['flash_message'], ENT_QUOTES, 'UTF-8') ?>
+        </p>
+        <?php unset($_SESSION['flash_message']); ?>
+    <?php endif; ?>
+
+    <?php /** @var string $viewFile */ ?>
+    <?php require $viewFile; ?>
 </main>
 
 <hr>
