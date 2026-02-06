@@ -16,7 +16,7 @@ class SecretRoomController extends Controller
 
         // Decide which view to render
         if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-            $isLoggedIn = !empty($_SESSION['user_logged_in']);
+            $isLoggedIn = $_SESSION['user_logged_in'];
             if (!$isLoggedIn) {
                 // Render login view
                 $this->render("pages/login", [
@@ -53,6 +53,10 @@ class SecretRoomController extends Controller
                     break;
                 case 'user_activate':
                     $this->handleUserActivate();
+                    break;
+                case 'user_logout':
+                    Session::clear_auth_trackers();
+                    $this->redirect("/");
                     break;
 
                 //admin actions
@@ -114,9 +118,6 @@ class SecretRoomController extends Controller
                     return;
                 }
 
-                // Store roles in session
-                $_SESSION['roles'] = $this->getUserRoles($username) ?: [];
-
                 $this->redirect($_SERVER['REQUEST_URI']);
             } else {
                 // Invalid credentials
@@ -132,13 +133,6 @@ class SecretRoomController extends Controller
         }
     }
 
-    private function getUserRoles($username): array
-    {
-        $roleStmt = $this->db->prepare("SELECT role FROM user_roles WHERE username = :username");
-        $roleStmt->bindValue(':username', $username);
-        $roleStmt->execute();
-        return $roleStmt->fetchAll(PDO::FETCH_COLUMN);
-    }
 
     private function handleSecretRoom(): void
     {
@@ -239,7 +233,6 @@ class SecretRoomController extends Controller
                 'username' => $user['username'],
                 'display_name' => $user['displayname'],
             ];
-            $_SESSION['roles'] = $this->getUserRoles($username) ?: [];
 
             $this->render('pages/registration-summary', [
                 'username' => $username,
@@ -307,7 +300,7 @@ class SecretRoomController extends Controller
 
     private function listAdminSubmissions(): void
     {
-        $username = $_POST['username'] ?? '';
+        $username = $_SESSION['username'] ?? '';
 
         $statement = $this->db->prepare("select * from group_admin_list_group_submissions(:username)");
 
