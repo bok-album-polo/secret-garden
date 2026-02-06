@@ -26,24 +26,28 @@ class Controller
             extract($data, EXTR_SKIP);
         }
 
-        $viewFile = __DIR__ . "/../views/{$view}.php";
+        $baseDir = __DIR__ . '/../views/';
+        $viewFile = $baseDir . $view . '.php';
 
         if (file_exists($viewFile)) {
-            // Use layout wrapper
-            require __DIR__ . "/../views/layout/template.php";
+            require $baseDir . 'template.php';
+        } elseif (file_exists($baseDir . 'functional/' . $view . '.php')) {
+            $viewFile = $baseDir . 'functional/' . $view . '.php';
+            require $baseDir . 'template.php';
+        } elseif (file_exists($baseDir . 'static/' . $view . '.php')) {
+            $viewFile = $baseDir . 'static/' . $view . '.php';
+            require $baseDir . 'template.php';
         } else {
-//            $this->redirect('/');
-            error_log("View {$viewFile} not found");
-            echo("View {$viewFile} not found");
+            error_log("View {$view} not found in views/, functional/, or static/");
+            echo "View {$view} not found";
         }
 
-        //pad file size by random amount
+        // pad file size by random amount
         $randomBytes = random_int(1000, 5000);
-        echo "<div style=\"display:none;\">";
+        echo '<div style="display:none;">';
         echo bin2hex(random_bytes($randomBytes));
-        echo "</div>";
+        echo '</div>';
     }
-
     protected function redirect(string $url): void
     {
         header("Location: {$url}");

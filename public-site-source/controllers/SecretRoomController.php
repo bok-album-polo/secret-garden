@@ -19,7 +19,7 @@ class SecretRoomController extends Controller
             $isLoggedIn = $_SESSION['user_logged_in'];
             if (!$isLoggedIn) {
                 // Render login view
-                $this->render("pages/login", [
+                $this->render("user-login", [
                     'title' => 'Login'
                 ]);
                 return; // stop here so secret room isn't rendered
@@ -27,7 +27,7 @@ class SecretRoomController extends Controller
 
             // For all other modes, or if logged in in writeonly mode
             $fields = $this->config->secret_room_fields;
-            $this->render("pages/$secretRoom", [
+            $this->render("$secretRoom", [
                 'fields' => $fields,
             ]);
         }
@@ -47,7 +47,7 @@ class SecretRoomController extends Controller
                 case 'username_choice':
                     $userData = UserNamePool::getDispatchedUser();
                     $_SESSION['dispatched_user'] = $userData;
-                    $this->render("pages/username-choice", [
+                    $this->render("username-choice", [
                         'title' => 'Username Choice',
                     ]);
                     break;
@@ -234,7 +234,7 @@ class SecretRoomController extends Controller
                 'display_name' => $user['displayname'],
             ];
 
-            $this->render('pages/registration-summary', [
+            $this->render('registration-summary', [
                 'username' => $username,
                 'displayname' => $displayName,
                 'generated_password' => $generatedPassword
@@ -293,7 +293,7 @@ class SecretRoomController extends Controller
         $statement->execute();
         $users = $statement->fetchAll(PDO::FETCH_ASSOC);
 
-        $this->render("pages/list-admin-users", [
+        $this->render("admin-list-users", [
             'users' => $users,
         ]);
     }
@@ -308,7 +308,7 @@ class SecretRoomController extends Controller
         $statement->execute();
         $submissions = $statement->fetchAll(PDO::FETCH_ASSOC);
 
-        $this->render("pages/list-admin-submissions", [
+        $this->render("admin-list-submissions", [
             'submissions' => $submissions,
         ]);
     }
@@ -325,7 +325,7 @@ class SecretRoomController extends Controller
         $statement->execute();
         $submission = $statement->fetch(PDO::FETCH_ASSOC);
 
-        $this->render("pages/admin-view-submission", [
+        $this->render("admin-view-submission", [
             'submission' => $submission,
         ]);
     }
@@ -358,7 +358,7 @@ SQL;
         $statement->execute();
         $submission = $statement->fetch(PDO::FETCH_ASSOC);
 
-        $this->render("pages/admin-view-submission", [
+        $this->render("admin-view-submission", [
             'submission' => $submission,
         ]);
     }
@@ -374,12 +374,12 @@ SQL;
         $fields = $this->config->secret_room_fields;
 
         $fields = array_merge($fields, [
-            ['name' => 'username', 'html_type' => 'text','readonly' => true,],
+            ['name' => 'username', 'html_type' => 'text', 'readonly' => true,],
         ]);
 
 
         // Render edit form with existing values
-        $this->render("pages/admin-edit-submission", [
+        $this->render("admin-edit-submission", [
             'submission' => $submission,
             'fields' => $fields,
         ]);
