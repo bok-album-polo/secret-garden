@@ -2,7 +2,6 @@
 
 namespace App\Controllers;
 
-use App\Models\DynamicModel;
 use App\Models\UserNamePool;
 use PDO;
 use PDOException;
@@ -10,14 +9,6 @@ use RandomException;
 
 class SecretRoomController extends Controller
 {
-    private Config $config;
-    private PDO $db;
-
-    public function __construct()
-    {
-        $this->config = Config::instance();
-        $this->db = Database::getInstance();
-    }
 
     public function index(): void
     {
@@ -154,63 +145,71 @@ class SecretRoomController extends Controller
         // ----------------------------
         // Sanitize inputs
         // ----------------------------
-        $username = trim($_POST['username'] ?? '');
-        $email = trim($_POST['primary_email'] ?? '');
-        $providedPassword = $_POST['password'] ?? '';
+        //$username = trim($_POST['username'] ?? ''); use for writeonly mode
 
-        $authStatus = false;
-        $generatedPassword = null;
 
-        // ----------------------------
-        // Check existing user
-        // ----------------------------
-        try {
-            $stmt = $this->db->prepare("SELECT * FROM user_get(:username, :pk_sequence)");
-            $stmt->bindValue(':username', $username, PDO::PARAM_STR);
-            $stmt->bindValue(':pk_sequence', $_SESSION['pk_sequence'], PDO::PARAM_STR);
-            $stmt->execute();
-            $user = $stmt->fetch(PDO::FETCH_ASSOC);
-
-            if ($user) {
-                // Returning user → must enter their password
-                if (!empty($providedPassword) && !empty($user['password'])) {
-                    if (password_verify($providedPassword, $user['password'])) {
-                        $authStatus = (bool)$user['authenticated'];
-                    }
-                } else {
-                    // Provided the password is null, or a user has no hash → generate new password
-                    $generatedPassword = $this->generatePassword();
-                    $newHash = password_hash($generatedPassword, PASSWORD_DEFAULT);
-
-                    $update = $this->db->prepare(" UPDATE users SET password = :password WHERE username = :username");
-                    $update->bindValue(':password', $newHash, PDO::PARAM_STR);
-                    $update->bindValue(':username', $username, PDO::PARAM_STR);
-                    $update->execute();
-
-                    $authStatus = true;
-                }
-            }
-
-        } catch (PDOException $e) {
-            error_log("User lookup failed for '{$username}': " . $e->getMessage());
-        }
+//        $authStatus = false;
+//        $generatedPassword = null;
+//
+//        // ----------------------------
+//        // Check existing user---writeonly mode
+//        // ----------------------------
+//        try {
+//            $stmt = $this->db->prepare("SELECT * FROM user_get(:username, :pk_sequence)");
+//            $stmt->bindValue(':username', $username, PDO::PARAM_STR);
+//            $stmt->bindValue(':pk_sequence', $_SESSION['pk_sequence'], PDO::PARAM_STR);
+//            $stmt->execute();
+//            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+//
+//            if ($user) {
+//                // Returning user → must enter their password
+//                if (!empty($providedPassword) && !empty($user['password'])) {
+//                    if (password_verify($providedPassword, $user['password'])) {
+//                        $authStatus = (bool)$user['authenticated'];
+//                    }
+//                } else {
+//                    // Provided the password is null, or a user has no hash → generate new password
+//                    $generatedPassword = $this->generatePassword();
+//                    $newHash = password_hash($generatedPassword, PASSWORD_DEFAULT);
+//
+//                    $update = $this->db->prepare(" UPDATE users SET password = :password WHERE username = :username");
+//                    $update->bindValue(':password', $newHash, PDO::PARAM_STR);
+//                    $update->bindValue(':username', $username, PDO::PARAM_STR);
+//                    $update->execute();
+//
+//                    $authStatus = true;
+//                }
+//            }
+//
+//        } catch (PDOException $e) {
+//            error_log("User lookup failed for '{$username}': " . $e->getMessage());
+//        }
 
         // ----------------------------
         // Record submission
         // ----------------------------
-        $this->recordSubmission($username, $email, $authStatus);
-
-        // ----------------------------
-        // Show summary page
-        // ----------------------------
-        $this->render('pages/registration-summary', [
+        $fields = $this->config->secret_room_fields;
+        $username = trim($_POST['username'] ?? $_SESSION['username']);
+        $email = trim($_POST['primary_email'] ?? '');
+        $user_agent_id = Session::getUserAgentId($_SERVER['HTTP_USER_AGENT']);
+        $data = [
             'username' => $username,
-            'email' => $email,
-            'authenticated' => $authStatus,
-            'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
-            'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? '',
-            'generated_password' => $generatedPassword
+            'created_by' => $username,
+            'primary_email' => $email,
+            'user_agent_id' => $user_agent_id,
+            'ip_address' => $_SERVER['REMOTE_ADDR'],
+        ];
+
+
+        $fields = array_merge($fields, [
+            ['name' => 'username'],
+            ['name' => 'created_by'],
+            ['name' => 'ip_address'],
+            ['name' => 'user_agent_id'],
         ]);
+
+        $this->recordSubmission(fields: $fields, data: $data, isSecretRoom: true);
+        $this->redirect($_SERVER['REQUEST_URI']);
     }
 
     private function handleUserActivate(): void
@@ -245,55 +244,6 @@ class SecretRoomController extends Controller
             echo "Unable to activate user";
         }
     }
-
-    private function recordSubmission(
-        string $username,
-        string $email,
-        bool   $authStatus
-    ): void
-    {
-        try {
-            $user_agent_id = Session::getUserAgentId($_SERVER['HTTP_USER_AGENT']);
-            $sql = <<<SQL
-            INSERT INTO secret_room_submissions (
-                username,
-                primary_email,
-                ip_address,
-                user_agent_id,
-                authenticated,
-                created_by
-            ) VALUES (
-                :username,
-                :email,
-                :ip_address,
-                :user_agent_id,
-                :authenticated,
-                :created_by
-            )
-        SQL;
-
-            $stmt = $this->db->prepare($sql);
-
-            $stmt->bindValue(':username', $username);
-            $stmt->bindValue(':email', $email);
-            $stmt->bindValue(':ip_address', $_SERVER['REMOTE_ADDR']);
-            $stmt->bindValue(':user_agent_id', $user_agent_id);
-            $stmt->bindValue(':authenticated', $authStatus, \PDO::PARAM_BOOL);
-            $stmt->bindValue(':created_by', $username);
-
-            $stmt->execute();
-
-        } catch (\PDOException $e) {
-            error_log(
-                sprintf(
-                    "Registration submission failed for '%s': %s",
-                    $username,
-                    $e->getMessage()
-                )
-            );
-        }
-    }
-
 
     /**
      * @throws RandomException
@@ -485,7 +435,7 @@ SQL;
         $submission = $stmt->fetch(PDO::FETCH_ASSOC);
 
         $fields = $this->config->secret_room_fields;
-        $htmlFields = self::renderFields($fields, $submission);
+        $htmlFields = self::renderForm($fields, $submission);
 
 
         // Render edit form with existing values
