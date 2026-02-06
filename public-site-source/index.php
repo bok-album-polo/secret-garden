@@ -17,17 +17,13 @@ Session::runAuthenticationSequence();
 $config = Config::instance();
 
 // Resolve current page/route
-$prettyUrls = $config->project_meta['pretty_urls'] ?? false;
+
 $secretDoor = $config->routing_secrets['secret_door'];
 $secretRoom = $config->routing_secrets['secret_room'];
 $environment = $config->project_meta['environment'] ?? 'production';
 
-if ($prettyUrls) {
-    $uri = trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
-    $page = $uri ?: 'home';
-} else {
-    $page = $_GET['page'] ?? 'home';
-}
+
+$page = $_GET['page'] ?? 'home';
 
 
 // Route handling
@@ -38,7 +34,7 @@ if ($page === $secretDoor) {
         $controller = new SecretDoorController();
     }
     $controller->index();
-} elseif ($environment=='development' && $page == 'clear-auth-trackers') {
+} elseif ($environment == 'development' && $page == 'clear-auth-trackers') {
     Session::clear_auth_trackers();
     header("Location: /");
     exit;

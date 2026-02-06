@@ -131,7 +131,7 @@ class Session
     }
 
     public static function runAuthenticationSequence(): void
-{
+    {
 
         $config = self::getConfig();
         $db = self::getDb();
@@ -164,15 +164,10 @@ class Session
 
 
         // Step 2b: Resolve route/page
-        $prettyUrls = $config->project_meta['pretty_urls'] ?? false;
-        $route = $prettyUrls
-            ? trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/')
-            : ($_GET['page'] ?? null);
-
+        $route = ($_GET['page'] ?? null);
         if ($route === null) {
             return;
         }
-
 
         // Build page ID mapping from pages_menu
         $pages = ['home' => '0'];
@@ -223,9 +218,7 @@ class Session
 
                 // Redirect to secret door
                 $secretDoor = $config->routing_secrets['secret_door'];
-                $route = $prettyUrls
-                    ? "/$secretDoor"
-                    : "/?page=$secretDoor";
+                $route = "/?page=$secretDoor";
 
                 header("Location: $route");
                 exit;
