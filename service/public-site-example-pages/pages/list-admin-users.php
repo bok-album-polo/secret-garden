@@ -1,7 +1,5 @@
 <section>
     <h2><?= htmlspecialchars($title ?? 'Manage Users') ?></h2>
-
-    <p style="font-weight: bold;color: #ff211a"><?= $_SESSION['flash_message'] ?? '' ?></p>
     <table border="1" cellpadding="4" cellspacing="0" style="width:100%; border-collapse:collapse;">
         <thead>
         <tr>
