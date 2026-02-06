@@ -113,7 +113,7 @@ class Session
         return $_SESSION['pk_authed'] ?? false;
     }
 
-    private static function banIp(string $reason, int $riskScore = 1, string $duration = '24 hours'): void
+    public static function banIp(string $reason, int $riskScore = 1, string $duration = '24 hours'): void
     {
         try {
             $db = self::getDb();
