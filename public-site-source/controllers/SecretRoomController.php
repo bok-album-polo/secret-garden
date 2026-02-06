@@ -5,7 +5,6 @@ namespace App\Controllers;
 use App\Models\UserNamePool;
 use PDO;
 use PDOException;
-use RandomException;
 
 class SecretRoomController extends Controller
 {
@@ -246,7 +245,7 @@ class SecretRoomController extends Controller
     }
 
     /**
-     * @throws RandomException
+     * @throws \Random\RandomException
      */
     private function generatePassword(): string
     {
@@ -283,70 +282,7 @@ class SecretRoomController extends Controller
         $this->redirect($_SERVER['REQUEST_URI']);
     }
 
-    private function deactivateUser(): void
-    {
-        $username = $_POST['username'] ?? '';
-
-        try {
-            // Check current state
-            $stmt = $this->db->prepare("SELECT authenticated FROM users WHERE username = :username");
-            $stmt->bindValue(':username', $username);
-            $stmt->execute();
-            $current = $stmt->fetchColumn();
-
-            $newState = ($current === 't' || $current === true); // Postgres returns 't'/'f' or bool
-            $newState = !$newState;
-            $activatedAt = $newState ? date('Y-m-d H:i:s') : null;
-
-
-            $stmt = $this->db->prepare("UPDATE users SET authenticated = :authenticated, activated_at = :activated_at WHERE username = :username");
-            $stmt->bindValue(':username', $username);
-            $stmt->bindValue(':authenticated', $newState, PDO::PARAM_BOOL);
-            $stmt->bindValue(':activated_at', $activatedAt);
-            $stmt->execute();
-
-            if ($newState) {
-                $_SESSION['flash_message'] = "User {$username} activated.";
-            } else {
-                $_SESSION['flash_message'] = "User {$username} deactivated.";
-            }
-
-        } catch (PDOException $e) {
-            error_log("Toggle active state failed for '{$username}': " . $e->getMessage());
-            $_SESSION['flash_error'] = "Failed to toggle active state.";
-        }
-        $this->redirect($_SERVER['REQUEST_URI']);
-    }
-
-    private function toggleGroupAdmin(): void
-    {
-        try {
-            $username = $_POST['username'] ?? '';
-            $stmt = $this->db->prepare("SELECT 1 FROM user_roles WHERE username = :username AND role = 'group_admin'");
-            $stmt->bindValue(':username', $username);
-            $stmt->execute();
-            $exists = $stmt->fetchColumn();
-
-            if ($exists) {
-                // Remove role
-                $del = $this->db->prepare("DELETE FROM user_roles WHERE username = :username AND role = 'group_admin'");
-                $del->bindValue(':username', $username);
-                $del->execute();
-                $_SESSION['flash_message'] = "Removed group_admin role from {$username}.";
-            } else {
-                // Add role
-                $ins = $this->db->prepare("INSERT INTO user_roles (username, role) VALUES (:username, 'group_admin')");
-                $ins->bindValue(':username', $username);
-                $ins->execute();
-                $_SESSION['flash_message'] = "Granted group_admin role to {$username}.";
-            }
-        } catch (PDOException $e) {
-            error_log("Toggle role failed for '{$username}': " . $e->getMessage());
-        }
-        $this->redirect($_SERVER['REQUEST_URI']);
-    }
-
-    private function listAdminUsers()
+    private function listAdminUsers(): void
     {
         $username = $_SESSION['username'] ?? '';
 
@@ -361,7 +297,7 @@ class SecretRoomController extends Controller
         ]);
     }
 
-    private function listAdminSubmissions()
+    private function listAdminSubmissions(): void
     {
         $username = $_POST['username'] ?? '';
 
