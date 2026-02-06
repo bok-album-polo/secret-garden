@@ -37,6 +37,7 @@ class Database
                     PDO::ATTR_PERSISTENT => false
                 ]);
             } catch (PDOException $e) {
+                error_log($e->getMessage());
                 throw new PDOException("Database connection failed: " . $e->getMessage());
             }
         }
