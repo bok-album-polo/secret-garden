@@ -80,6 +80,7 @@ CONFIG_SCHEMA = {
                 "password_generated_length",
                 "password_generated_charset",
                 "password_hash_algorithm",
+                "password_allow_custom",
                 "username_dispatch",
                 "username_allow_custom"
             ],
@@ -89,6 +90,7 @@ CONFIG_SCHEMA = {
                 "password_generated_length": {"type": "integer", "minimum": 1},
                 "password_generated_charset": {"type": "string"},
                 "password_hash_algorithm": {"type": "string", "enum": ["PASSWORD_BCRYPT", "PASSWORD_ARGON2ID", "PASSWORD_PLAINTEXT"]},
+                "password_allow_custom": {"type": "boolean"},
                 "common_sequence_threshold": {"type": "number", "minimum": 0.0, "maximum": 1.0},
                 "file_upload_max_size_mb": {"type": "number", "minimum": 1},
                 "username_dispatch": {"type": "boolean"},

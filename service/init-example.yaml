@@ -22,6 +22,7 @@ application_config:
   password_generated_length: 8
   password_generated_charset: "0123456789"
   password_hash_algorithm: "PASSWORD_ARGON2ID" # Options: PASSWORD_ARGON2ID, PASSWORD_BCRYPT, PASSWORD_PLAINTEXT
+  password_allow_custom: false # Allow users to set custom passwords
   file_upload_max_size_mb: 1
   username_dispatch: true # Enable automatic username dispatching
   username_allow_custom: false # Allow users to set custom usernames
