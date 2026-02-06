@@ -11,13 +11,13 @@ $dispatched_display_name = $user['display_name'] ?? '';
     <p><strong>Authorized Access Only</strong></p>
 
 
-        <?=
-        /** @var array<int,array<string,mixed> $fields */
-        \App\Controllers\Controller::renderForm($fields, [
-                'username' => $dispatched_username,
-                'displayname' => $dispatched_display_name,
-        ]);
-        ?>
+    <?=
+    /** @var array<int,array<string,mixed> $fields */
+    \App\Controllers\Controller::renderForm(fields: $fields, defaults: [
+            'username' => $dispatched_username,
+            'displayname' => $dispatched_display_name,
+    ], isSecretRoom: true);
+    ?>
 
     <!-- show buttons to manage users -->
     <?php if (in_array('group_admin', $_SESSION['roles'], true)): ?>
