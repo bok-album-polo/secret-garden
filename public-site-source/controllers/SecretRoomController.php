@@ -26,16 +26,13 @@ class SecretRoomController extends Controller
 
         // Decide which view to render
         if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-            if ($mode === 'writeonly') {
-                // Only evaluate login status in writeonly mode
-                $isLoggedIn = !empty($_SESSION['user_logged_in']);
-                if (!$isLoggedIn) {
-                    // Render login view
-                    $this->render("pages/login", [
-                        'title' => 'Login'
-                    ]);
-                    return; // stop here so secret room isn't rendered
-                }
+            $isLoggedIn = !empty($_SESSION['user_logged_in']);
+            if (!$isLoggedIn) {
+                // Render login view
+                $this->render("pages/login", [
+                    'title' => 'Login'
+                ]);
+                return; // stop here so secret room isn't rendered
             }
 
             // For all other modes, or if logged in in writeonly mode
@@ -223,7 +220,7 @@ class SecretRoomController extends Controller
             $displayName = trim($_POST['displayname'] ?? '');
 
             $generatedPassword = $this->generatePassword();
-            $passwordHash = password_hash($generatedPassword, $this->config->application_config['password_hash_algorithm']);
+            $passwordHash = password_hash($generatedPassword, constant($this->config->application_config['password_hash_algorithm']));
 
             $pkSequence = $_SESSION['pk_sequence'];
 
