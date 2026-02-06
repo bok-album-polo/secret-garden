@@ -65,6 +65,14 @@ class Controller
         return $_SESSION['csrf_token'];
     }
 
+    public static function getUserRoles($username): array
+    {
+        $db = Database::getInstance();
+        $roleStmt = $db->prepare("SELECT role FROM user_roles WHERE username = :username");
+        $roleStmt->bindValue(':username', $username);
+        $roleStmt->execute();
+        return $roleStmt->fetchAll(PDO::FETCH_COLUMN);
+    }
     /**
      * Render form fields with optional default values.
      *
