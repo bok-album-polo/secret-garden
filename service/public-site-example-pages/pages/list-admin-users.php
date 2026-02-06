@@ -17,16 +17,9 @@
                     <td>
                         <!-- Reset password -->
                         <form action="" method="POST" style="display:inline;">
-                            <input type="hidden" name="action" value="reset_password">
+                            <input type="hidden" name="action" value="admin_reset_password">
                             <input type="hidden" name="username" value="<?= $user['username'] ?>">
                             <button type="submit">Reset Password</button>
-                        </form>
-
-                        <!-- changes the user authentication status -->
-                        <form action="" method="POST" style="display:inline;">
-                            <input type="hidden" name="action" value="deactivate_user">
-                            <input type="hidden" name="username" value="<?= $user['username'] ?>">
-                            <button type="submit">Change authentication status</button>
                         </form>
                     </td>
                 </tr>
