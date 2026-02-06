@@ -57,7 +57,7 @@ CONFIG_SCHEMA = {
                 "num_public_sites": {"type": "integer", "minimum": 1},
                 "num_unique_pk_sequences": {"type": "integer", "minimum": 1},
                 "num_generated_usernames": {"type": "integer", "minimum": 10},
-                "mode": {"type": "string", "enum": ["writeonly", "readwrite"]}
+                "mode": {"type": "string", "enum": ["readwrite","writeonly"]}
             },
             "additionalProperties": True
         },
