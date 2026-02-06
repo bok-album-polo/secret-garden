@@ -22,10 +22,11 @@ class Database
             $dbCreds = $config->db_credentials;
 
             $dsn = sprintf(
-                "pgsql:host=%s;port=%d;dbname=%s",
+                "pgsql:host=%s;port=%d;dbname=%s;sslmode=%s",
                 $database['host'],
                 $database['port'],
-                $database['db_name']
+                $database['db_name'],
+                $database['ssl_mode']
             );
 
             try {

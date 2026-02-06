@@ -63,11 +63,12 @@ CONFIG_SCHEMA = {
         },
         "database_server": {
             "type": "object",
-            "required": ["host", "port", "db_name"],
+            "required": ["host", "port", "db_name", "ssl_mode"],
             "properties": {
                 "host": {"type": "string"},
                 "port": {"type": "integer", "minimum": 1, "maximum": 65535},
-                "db_name": {"type": "string"}
+                "db_name": {"type": "string"},
+                "ssl_mode": {"type": "string", "enum": ["disable", "require", "verify-ca", "verify-full"]}
             },
             "additionalProperties": False
         },
