@@ -95,8 +95,8 @@ class SecretRoomController extends Controller
         try {
             // Look up user by username (using your helper function)
             $stmt = $this->db->prepare("SELECT * FROM user_get(:username, :pk_sequence)");
-            $stmt->bindValue(':username', $username, PDO::PARAM_STR);
-            $stmt->bindValue(':pk_sequence', $_SESSION['pk_sequence'], PDO::PARAM_STR);
+            $stmt->bindValue(':username', $username);
+            $stmt->bindValue(':pk_sequence', $_SESSION['pk_sequence']);
             $stmt->execute();
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -132,7 +132,7 @@ class SecretRoomController extends Controller
                 $this->redirect($_SERVER['REQUEST_URI']);
             }
         } catch (PDOException $e) {
-            error_log("Login failed for '{$username}': " . $e->getMessage());
+            error_log("Login failed for '$username': " . $e->getMessage());
             $_SESSION['user_logged_in'] = false;
             $_SESSION['roles'] = [];
             $this->redirect($_SERVER['REQUEST_URI']);
