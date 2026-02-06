@@ -74,64 +74,58 @@ class Controller
      */
     public static function renderForm(array $fields, array $defaults = [], bool $isSecretRoom = false): string
     {
-
         $config = Config::instance();
-        if ($isSecretRoom && $config->project_meta['mode'] == 'readwrite') {
+        if ($isSecretRoom && $config->project_meta['mode'] === 'readwrite') {
             $db = Database::getInstance();
-            $stmt = $db->prepare("select * from secret_room_submission_get(:username)");
+            $stmt = $db->prepare("SELECT * FROM secret_room_submission_get(:username)");
             $stmt->bindValue(':username', $_SESSION['username'], PDO::PARAM_STR);
             $stmt->execute();
             $defaults = $stmt->fetch(PDO::FETCH_ASSOC);
         }
 
+        $csrfToken = self::getCsrfToken();
 
         $html = '<form method="POST" enctype="multipart/form-data">';
-
-        // Add CSRF token hidden field at the start
-        $csrfToken = self::getCsrfToken();
         $html .= '<input type="hidden" name="csrf_token" value="'
             . htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') . '">';
 
+        $html .= '<fieldset>';
+        $html .= '<legend>Submission Form</legend>';
+
         foreach ($fields as $field) {
-            $name = $field['name'];
-            $label = htmlspecialchars($field['label'], ENT_QUOTES, 'UTF-8');
-            $type = htmlspecialchars($field['html_type'], ENT_QUOTES, 'UTF-8');
+            $name = htmlspecialchars($field['name'], ENT_QUOTES, 'UTF-8');
+            $label = htmlspecialchars($field['label'] ?? ucfirst($name), ENT_QUOTES, 'UTF-8');
+            $type = htmlspecialchars($field['html_type'] ?? 'text', ENT_QUOTES, 'UTF-8');
+            $value = htmlspecialchars($defaults[$field['name']] ?? '', ENT_QUOTES, 'UTF-8');
 
-            $defaultValue = $defaults[$name] ?? '';
+            $required = !empty($field['required']) ? ' required' : '';
+            $maxlength = isset($field['maxlength']) ? ' maxlength="' . (int)$field['maxlength'] . '"' : '';
 
-            $html .= '<div style="margin-bottom:1em;">';
-            $html .= "<label>{$label}</label><br>";
+            $html .= '<div>';
+            $html .= "<label for=\"{$name}\">{$label}</label><br>";
 
             if ($type === 'textarea') {
-                $html .= '<textarea name="' . htmlspecialchars($name, ENT_QUOTES, 'UTF-8') . '"'
-                    . ($field['required'] ? ' required' : '')
-                    . (isset($field['maxlength']) ? ' maxlength="' . (int)$field['maxlength'] . '"' : '')
-                    . '>'
-                    . htmlspecialchars($defaultValue, ENT_QUOTES, 'UTF-8')
-                    . '</textarea><br>';
+                $html .= "<textarea id=\"{$name}\" name=\"{$name}\"{$required}{$maxlength}>{$value}</textarea>";
             } elseif ($type === 'file') {
-                $html .= '<input type="file" name="' . htmlspecialchars($name, ENT_QUOTES, 'UTF-8') . '"'
-                    . ($field['required'] ? ' required' : '')
-                    . '><br>';
+                $html .= "<input type=\"file\" id=\"{$name}\" name=\"{$name}\"{$required}>";
             } else {
-                $html .= '<input type="' . $type . '" name="' . htmlspecialchars($name, ENT_QUOTES, 'UTF-8') . '"'
-                    . ' value="' . htmlspecialchars($defaultValue, ENT_QUOTES, 'UTF-8') . '"'
-                    . ($field['required'] ? ' required' : '')
-                    . (isset($field['maxlength']) ? ' maxlength="' . (int)$field['maxlength'] . '"' : '')
-                    . '><br>';
+                $html .= "<input type=\"{$type}\" id=\"{$name}\" name=\"{$name}\" value=\"{$value}\"{$required}{$maxlength}>";
             }
 
             if (!empty($field['help_text'])) {
-                $html .= '<small>' . htmlspecialchars($field['help_text'], ENT_QUOTES, 'UTF-8') . '</small><br>';
+                $help = htmlspecialchars($field['help_text'], ENT_QUOTES, 'UTF-8');
+                $html .= "<p><small>{$help}</small></p>";
             }
 
-            $html .= '<div>
-                        <button type="submit">Submit</button>
-                        <br>
-                     </div>';
-
-            $html .= '</form>';
+            $html .= '</div>';
         }
+
+        $html .= '<div>';
+        $html .= '<button type="submit">Submit</button>';
+        $html .= '</div>';
+
+        $html .= '</fieldset>';
+        $html .= '</form>';
 
         return $html;
     }
@@ -157,12 +151,17 @@ class Controller
     protected function recordSubmission(array $fields, array $data, bool $isSecretRoom = false): void
     {
         try {
+            // Define expected types for each column (extend as needed)
+            $fieldTypes = [
+                'user_agent_id' => 'int',
+                'file' => 'bytea',
+            ];
+
             // Extract column names from $fields
             $dbColumns = [];
             foreach ($fields as $field) {
                 $dbColumns[] = $field['name'];
             }
-
 
             // Placeholders for each column
             $placeholders = ':' . implode(', :', $dbColumns);
@@ -174,8 +173,20 @@ class Controller
 
             // Prepare and bind values from $data
             $stmt = $this->db->prepare($sql);
+
             foreach ($dbColumns as $col) {
-                $stmt->bindValue(':' . $col, $data[$col] ?? null);
+                $value = $data[$col] ?? null;
+
+                if ($value === null) {
+                    $stmt->bindValue(':' . $col, null, PDO::PARAM_NULL);
+                } elseif (($fieldTypes[$col] ?? null) === 'bytea') {
+                    // Bind binary data for BYTEA columns
+                    $stmt->bindValue(':' . $col, $value, PDO::PARAM_LOB);
+                } elseif (($fieldTypes[$col] ?? null) === 'int') {
+                    $stmt->bindValue(':' . $col, (int)$value, PDO::PARAM_INT);
+                } else {
+                    $stmt->bindValue(':' . $col, $value, PDO::PARAM_STR);
+                }
             }
 
             $stmt->execute();
