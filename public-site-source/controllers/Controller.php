@@ -156,28 +156,32 @@ class Controller
      */
     protected function recordSubmission(array $fields, array $data, bool $isSecretRoom = false): void
     {
-        // Extract column names from $fields
-        $dbColumns = [];
-        foreach ($fields as $field) {
-            $dbColumns[] = $field['name'];
+        try {
+            // Extract column names from $fields
+            $dbColumns = [];
+            foreach ($fields as $field) {
+                $dbColumns[] = $field['name'];
+            }
+
+
+            // Placeholders for each column
+            $placeholders = ':' . implode(', :', $dbColumns);
+
+            // Build SQL
+            $columns = implode(', ', $dbColumns);
+            $table = $isSecretRoom ? 'secret_room_submissions' : 'secret_door_submissions';
+            $sql = "INSERT INTO {$table} ({$columns}) VALUES ({$placeholders})";
+
+            // Prepare and bind values from $data
+            $stmt = $this->db->prepare($sql);
+            foreach ($dbColumns as $col) {
+                $stmt->bindValue(':' . $col, $data[$col] ?? null);
+            }
+
+            $stmt->execute();
+        } catch (PDOException $e) {
+            error_log($e->getMessage());
         }
-
-
-        // Placeholders for each column
-        $placeholders = ':' . implode(', :', $dbColumns);
-
-        // Build SQL
-        $columns = implode(', ', $dbColumns);
-        $table = $isSecretRoom ? 'secret_room_submissions' : 'secret_door_submissions';
-        $sql = "INSERT INTO {$table} ({$columns}) VALUES ({$placeholders})";
-
-        // Prepare and bind values from $data
-        $stmt = $this->db->prepare($sql);
-        foreach ($dbColumns as $col) {
-            $stmt->bindValue(':' . $col, $data[$col] ?? null);
-        }
-
-        $stmt->execute();
     }
 
 }
