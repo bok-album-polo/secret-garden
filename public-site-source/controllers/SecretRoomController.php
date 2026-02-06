@@ -372,13 +372,16 @@ SQL;
         $submission = $stmt->fetch(PDO::FETCH_ASSOC);
 
         $fields = $this->config->secret_room_fields;
-        $htmlFields = self::renderForm($fields, $submission);
+
+        $fields = array_merge($fields, [
+            ['name' => 'username', 'html_type' => 'text','readonly' => true,],
+        ]);
 
 
         // Render edit form with existing values
         $this->render("pages/admin-edit-submission", [
             'submission' => $submission,
-            'htmlFields' => $htmlFields,
+            'fields' => $fields,
         ]);
     }
 }
