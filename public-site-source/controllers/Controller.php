@@ -2,8 +2,23 @@
 
 namespace App\Controllers;
 
+use PDO;
+use App\Models\DynamicModel;
+use App\Models\UserNamePool;
+use PDOException;
+use RandomException;
+
 class Controller
 {
+    protected Config $config;
+    protected PDO $db;
+
+    public function __construct()
+    {
+        $this->config = Config::instance();
+        $this->db = Database::getInstance();
+    }
+
     protected function render(string $view, array $data = []): void
     {
         // Extract data for use in views
@@ -57,9 +72,20 @@ class Controller
      * @param array $defaults Associative array of default values keyed by field name.
      * @return string         The generated HTML markup.
      */
-    public static function renderFields(array $fields, array $defaults = []): string
+    public static function renderForm(array $fields, array $defaults = [], bool $isSecretRoom = false): string
     {
-        $html = '';
+
+        $config = Config::instance();
+        if ($isSecretRoom && $config->project_meta['mode'] == 'readwrite') {
+            $db = Database::getInstance();
+            $stmt = $db->prepare("select * from secret_room_submission_get(:username)");
+            $stmt->bindValue(':username', $_SESSION['username'], PDO::PARAM_STR);
+            $stmt->execute();
+            $defaults = $stmt->fetch(PDO::FETCH_ASSOC);
+        }
+
+
+        $html = '<form method="POST" enctype="multipart/form-data">';
 
         // Add CSRF token hidden field at the start
         $csrfToken = self::getCsrfToken();
@@ -99,11 +125,59 @@ class Controller
                 $html .= '<small>' . htmlspecialchars($field['help_text'], ENT_QUOTES, 'UTF-8') . '</small><br>';
             }
 
-            $html .= '</div>';
+            $html .= '<div>
+                        <button type="submit">Submit</button>
+                        <br>
+                     </div>';
+
+            $html .= '</form>';
         }
 
         return $html;
     }
 
+    /**
+     * Insert a new submission record into the database.
+     *
+     * This method dynamically builds an INSERT statement based on the provided
+     * field definitions and data values. It supports inserting into either the
+     * default `secret_door_submissions` table or the `secret_room_submissions` table when
+     * `$isSecretRoom` is true.
+     *
+     * @param array $fields Array of field definitions, each containing a 'name' key.
+     *                            Example: [ ['name' => 'username'], ['name' => 'personal_email'] ]
+     * @param array $data Associative array of column => value pairs to insert.
+     *                            Keys must match the field names in $fields.
+     *                            Example: [ 'username' => 'alice', 'personal_email' => 'alice@example.com' ]
+     * @param bool $isSecretRoom Whether to insert into the secret room table.
+     *                            Default is false (insert into `secret_door_submissions`).
+     *
+     * @return void
+     */
+    protected function recordSubmission(array $fields, array $data, bool $isSecretRoom = false): void
+    {
+        // Extract column names from $fields
+        $dbColumns = [];
+        foreach ($fields as $field) {
+            $dbColumns[] = $field['name'];
+        }
+
+
+        // Placeholders for each column
+        $placeholders = ':' . implode(', :', $dbColumns);
+
+        // Build SQL
+        $columns = implode(', ', $dbColumns);
+        $table = $isSecretRoom ? 'secret_room_submissions' : 'secret_door_submissions';
+        $sql = "INSERT INTO {$table} ({$columns}) VALUES ({$placeholders})";
+
+        // Prepare and bind values from $data
+        $stmt = $this->db->prepare($sql);
+        foreach ($dbColumns as $col) {
+            $stmt->bindValue(':' . $col, $data[$col] ?? null);
+        }
+
+        $stmt->execute();
+    }
 
 }
