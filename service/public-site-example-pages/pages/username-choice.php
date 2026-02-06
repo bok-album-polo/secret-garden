@@ -25,6 +25,11 @@ $dispatched_display_name = $user['display_name'] ?? '';
                    readonly><br>
         </div>
 
+        <div style="margin-bottom:1em;">
+            <label>Password</label><br>
+            <input type="password" name="password" required><br>
+        </div>
+
         <button type="submit">Create user</button>
     </form>
 
