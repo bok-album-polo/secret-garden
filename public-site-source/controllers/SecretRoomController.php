@@ -233,9 +233,6 @@ class SecretRoomController extends Controller
             $this->render('pages/registration-summary', [
                 'username' => $username,
                 'displayname' => $displayName,
-                'email' => null,
-                'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
-                'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? '',
                 'generated_password' => $generatedPassword
             ]);
         } catch (PDOException $e) {
