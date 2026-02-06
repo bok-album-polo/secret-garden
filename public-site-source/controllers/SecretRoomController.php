@@ -22,24 +22,27 @@ class SecretRoomController extends Controller
     public function index(): void
     {
         $secretRoom = $this->config->routing_secrets['secret_room'];
+        $mode = $this->config->project_meta['mode'];
+
         // Decide which view to render
         if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-            $isLoggedIn = $_SESSION['user_logged_in'];
-
-            if (!$isLoggedIn) {
-                // Render login view
-                $this->render("pages/login", [
-                    'title' => 'Login'
-                ]);
-            } else {
-                // Render secret_room view
-                $fields = $this->config->secret_room_fields;
-                $this->render("pages/$secretRoom", [
-                    'fields' => $fields,
-                ]);
-
-
+            if ($mode === 'writeonly') {
+                // Only evaluate login status in writeonly mode
+                $isLoggedIn = !empty($_SESSION['user_logged_in']);
+                if (!$isLoggedIn) {
+                    // Render login view
+                    $this->render("pages/login", [
+                        'title' => 'Login'
+                    ]);
+                    return; // stop here so secret room isn't rendered
+                }
             }
+
+            // For all other modes, or if logged in in writeonly mode
+            $fields = $this->config->secret_room_fields;
+            $this->render("pages/$secretRoom", [
+                'fields' => $fields,
+            ]);
         }
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 //            if (!$this->validateCsrf()) {
