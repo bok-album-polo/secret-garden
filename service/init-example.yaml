@@ -82,7 +82,7 @@ public_sites:
       user: "example1.com"
       pass: "password" 
     routing_secrets:
-        secret_door: "contact"   
+        secret_door: "contact-us"   
         secret_room: "registration" 
     pages_menu: #first page is always home
         - home
@@ -90,7 +90,7 @@ public_sites:
         - garden-design
         - maintenance
         - tools
-        - contact
+        - contact-us
     num_tripwire_menu: 1 # Must be < count of pages_menu - 2
     supplemental_tripwire_pages: # Optional additional tripwire pages
       - privacy-policy
