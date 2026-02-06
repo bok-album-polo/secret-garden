@@ -92,14 +92,6 @@ if ($environment === 'development'):
                 <td>$_SESSION['user_logged_in']</td>
                 <td><?= $_SESSION['user_logged_in'] ? 'YES' : 'NO' ?></td>
             </tr>
-            <tr>
-                <td>dbUserInfo</td>
-                <td><?= htmlspecialchars(App\Controllers\Database::dbUserInfo(), ENT_QUOTES, 'UTF-8') ?></td>
-            </tr>
-            <tr>
-                <td>Pretty URLs</td>
-                <td><?= $prettyUrls ? 'YES' : 'NO' ?></td>
-            </tr>
         </table>
 
         <?php $logoutUrl = $prettyUrls ? '/clear-auth-trackers' : '?page=clear-auth-trackers'; ?>
