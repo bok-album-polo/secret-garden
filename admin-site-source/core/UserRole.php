@@ -9,12 +9,14 @@ class UserRole
 {
     public const string USER = 'user';
     public const string ADMIN = 'admin';
+    public const string GROUP_ADMIN = 'group_admin';
     public const string SUPERADMIN = 'superadmin';
 
     public static function getAll()
     {
         return [
             self::ADMIN,
+            self::GROUP_ADMIN,
             self::SUPERADMIN,
         ];
     }
@@ -37,7 +39,8 @@ class UserRole
         $hierarchy = [
             self::USER => 1,
             self::ADMIN => 2,
-            self::SUPERADMIN => 3,
+            self::GROUP_ADMIN => 3,
+            self::SUPERADMIN => 4,
         ];
 
         $highestRole = self::USER;
@@ -61,7 +64,8 @@ class UserRole
         $hierarchy = [
             self::USER => 1,
             self::ADMIN => 2,
-            self::SUPERADMIN => 3,
+            self::GROUP_ADMIN => 3,
+            self::SUPERADMIN => 4,
         ];
 
         $userLevel = $hierarchy[$highestRole] ?? 0;
