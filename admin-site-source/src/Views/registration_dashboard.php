@@ -1,5 +1,5 @@
 <?php
-use App\Core\Role;
+use App\core\Role;
 
 /**
  * @var array $registrations

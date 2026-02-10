@@ -1,9 +1,9 @@
 <?php
 // Core
-require_once __DIR__ . '/Core/Controller.php';
-require_once __DIR__ . '/Core/Router.php';
-require_once __DIR__ . '/Core/Database.php';
-require_once __DIR__ . '/Core/Role.php';
+require_once __DIR__ . '/core/Controller.php';
+require_once __DIR__ . '/core/Router.php';
+require_once __DIR__ . '/core/Database.php';
+require_once __DIR__ . '/core/Role.php';
 
 
 // models

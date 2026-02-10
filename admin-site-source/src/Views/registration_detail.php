@@ -1,6 +1,6 @@
 <?php
 
-use App\Core\Role;
+use App\core\Role;
 
 $userRoles = $_SESSION['roles'] ?? [Role::USER];
 

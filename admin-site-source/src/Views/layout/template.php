@@ -1,6 +1,6 @@
 <?php
 
-use App\Core\Role;
+use App\core\Role;
 
 if (!isset($pageTitle)) {
     $pageTitle = 'Secret Garden - Admin';
