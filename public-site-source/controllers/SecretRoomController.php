@@ -211,11 +211,16 @@ class SecretRoomController extends Controller
         try {
             $username = trim($_POST['username'] ?? '');
             $displayName = trim($_POST['displayname'] ?? '');
-            $password = trim($_POST['password'] ?? '');
 
-            $generatedPassword = $this->generatePassword();
+            $password_allow_custom = $this->config->application_config['password_allow_custom'];
+            if ($password_allow_custom) {
+                //if custom password is allowed set the one supplied by the user in form
+                $password = trim($_POST['password'] ?? '');
+            } else {
+                $password = $this->generatePassword();
+            }
 
-            $passwordHash = password_hash($generatedPassword, constant($this->config->application_config['password_hash_algorithm']));
+            $passwordHash = password_hash($password, constant($this->config->application_config['password_hash_algorithm']));
 
             $pkSequence = $_SESSION['pk_sequence'];
 
@@ -237,7 +242,7 @@ class SecretRoomController extends Controller
             $this->render('registration-summary', [
                 'username' => $username,
                 'displayname' => $displayName,
-                'generated_password' => $generatedPassword
+                'generated_password' => $password
             ]);
         } catch (PDOException $e) {
             error_log("User activation failed for '{$username}': " . $e->getMessage());
@@ -315,13 +320,10 @@ class SecretRoomController extends Controller
 
     private function handleAdminAuthenticateSubmission(): void
     {
-        $id = $_POST['id'] ?? '';
+        $id = $_POST['id'] ?? -1;
 
-        $sql = "UPDATE secret_room_submissions set authenticated = 1 where id = :id";
-
-        $statement = $this->db->prepare($sql);
-
-        $statement->bindValue(':id', (int)$id, PDO::PARAM_INT);
+        $statement = $this->db->prepare("select * secret_room_submission_authenticate(:record_id)");
+        $statement->bindValue(':record_id', (int)$id, PDO::PARAM_INT);
         $statement->execute();
         $submission = $statement->fetch(PDO::FETCH_ASSOC);
 
