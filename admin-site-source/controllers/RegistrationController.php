@@ -2,7 +2,6 @@
 
 namespace App\Controllers;
 
-use App\Core\Controller;
 use App\Models\SecretRoomSubmission;
 
 class RegistrationController extends Controller
