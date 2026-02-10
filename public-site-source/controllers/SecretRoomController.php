@@ -55,8 +55,15 @@ class SecretRoomController extends Controller
                     $this->handleUserActivate();
                     break;
                 case 'user_logout':
-                    Session::clear_auth_trackers();
-                    $this->redirect("/");
+                    $_SESSION['user_logged_in'] = false;
+                    $_SESSION['username'] = null;
+                    $_SESSION['roles'] = [];
+                    if ($this->config->project_meta['pretty_urls']) {
+                        $url = $this->config->routing_secrets['secret_door'];
+                    } else {
+                        $url = "?page=" . $this->config->routing_secrets['secret_door'];
+                    }
+                    $this->redirect("/" . $url);
                     break;
 
                 //admin actions
@@ -73,7 +80,7 @@ class SecretRoomController extends Controller
                     $this->handleAdminViewSubmission();
                     break;
                 case 'admin_edit_submission':
-                    $this->handleAdminEditSubmission();
+                    $this->handleAdminViewSubmission(form_readonly: false);
                     break;
                 case 'admin_reset_password':
                     $this->resetPassword();
@@ -183,12 +190,12 @@ class SecretRoomController extends Controller
         // Record submission
         // ----------------------------
         $fields = $this->config->secret_room_fields;
-        $username = trim($_POST['username'] ?? $_SESSION['username']);
+        $target_user = trim($_POST['username'] ?? $_SESSION['username']);
         $email = trim($_POST['primary_email'] ?? '');
         $user_agent_id = Session::getUserAgentId($_SERVER['HTTP_USER_AGENT']);
         $data = [
-            'username' => $username,
-            'created_by' => $username,
+            'username' => $target_user,
+            'created_by' => $_SESSION['username'],
             'primary_email' => $email,
             'user_agent_id' => $user_agent_id,
             'ip_address' => $_SERVER['REMOTE_ADDR'],
@@ -203,7 +210,28 @@ class SecretRoomController extends Controller
         ]);
 
         $this->recordSubmission(fields: $fields, data: $data, isSecretRoom: true);
-        $this->redirect($_SERVER['REQUEST_URI']);
+        if ($target_user != $_SESSION['username']) {
+            $secretRoom = $this->config->routing_secrets['secret_room'];
+            $fields = $this->config->secret_room_fields;
+
+            $fields = array_merge($fields, [
+                ['name' => 'username', 'html_type' => 'hidden', 'readonly' => true,],
+            ]);
+
+            $sql = "select * from secret_room_submission_get(:username)";
+            $statement = $this->db->prepare($sql);
+            $statement->bindValue(':username', $target_user);
+            $statement->execute();
+            $submission = $statement->fetch(PDO::FETCH_ASSOC);
+            $this->render("$secretRoom", [
+                'fields' => $fields,
+                'form_readonly' => true,
+                'submission' => $submission,
+            ]);
+
+        } else {
+            $this->redirect($_SERVER['REQUEST_URI']);
+        }
     }
 
     private function handleUserActivate(): void
@@ -332,58 +360,29 @@ class SecretRoomController extends Controller
         ]);
     }
 
-    private function handleAdminViewSubmission(): void
+    private function handleAdminViewSubmission($form_readonly = true): void
     {
-        $id = $_POST['id'] ?? '';
+        $username = $_POST['username'] ?? '';
 
-        $sql = <<<SQL
-SELECT
-  secret_room_submissions."id",
-  secret_room_submissions.username,
-  secret_room_submissions.created_at,
-  secret_room_submissions.created_by,
-  secret_room_submissions.ip_address,
-  secret_room_submissions.user_agent_id,
-  secret_room_submissions.authenticated,
-  secret_room_submissions."domain",
-  secret_room_submissions.primary_email,
-  user_agents.user_agent
-FROM
-  secret_room_submissions
-  INNER JOIN user_agents ON user_agents."id" = secret_room_submissions.user_agent_id
-where secret_room_submissions.id = :id
-SQL;
+        $sql = "select * from secret_room_submission_get(:username)";
 
         $statement = $this->db->prepare($sql);
 
-        $statement->bindValue(':id', (int)$id, PDO::PARAM_INT);
+        $statement->bindValue(':username', $username);
         $statement->execute();
         $submission = $statement->fetch(PDO::FETCH_ASSOC);
 
-        $this->render("admin-view-submission", [
-            'submission' => $submission,
-        ]);
-    }
-
-    private function handleAdminEditSubmission(): void
-    {
-        $id = $_POST['id'] ?? null;
-        $stmt = $this->db->prepare("SELECT * FROM secret_room_submissions WHERE id = :id");
-        $stmt->bindValue(':id', (int)$id, PDO::PARAM_INT);
-        $stmt->execute();
-        $submission = $stmt->fetch(PDO::FETCH_ASSOC);
-
+        $secretRoom = $this->config->routing_secrets['secret_room'];
         $fields = $this->config->secret_room_fields;
 
         $fields = array_merge($fields, [
-            ['name' => 'username', 'html_type' => 'text', 'readonly' => true,],
+            ['name' => 'username', 'html_type' => 'hidden', 'readonly' => true,],
         ]);
 
-
-        // Render edit form with existing values
-        $this->render("admin-edit-submission", [
-            'submission' => $submission,
+        $this->render("$secretRoom", [
             'fields' => $fields,
+            'form_readonly' => $form_readonly,
+            'submission' => $submission,
         ]);
     }
 }
