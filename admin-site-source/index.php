@@ -2,7 +2,7 @@
 
 session_start();
 
-require_once __DIR__ . '/src/includes.php';
+require_once __DIR__ . '/includes.php';
 
 use controllers\AuthController;
 use controllers\RegistrationController;

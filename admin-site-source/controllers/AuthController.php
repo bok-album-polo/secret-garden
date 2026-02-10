@@ -2,6 +2,7 @@
 
 namespace controllers;
 
+use core\Controller;
 use core\Role;
 use models\User;
 
@@ -37,13 +38,13 @@ class AuthController extends Controller
 
             session_regenerate_id(true);
             $_SESSION['username'] = $user['username'];
-            
+
             // Fetch roles from user_roles table
             $roles = Role::getUserRoles($user['username']);
-            
+
             // Store roles as an array in session
             $_SESSION['roles'] = $roles;
-            
+
             // Store highest role for convenience/backward compatibility
             $_SESSION['role'] = Role::getHighestRole($roles);
 
