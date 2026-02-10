@@ -45,7 +45,7 @@ if ($submission ?? null) {
     ?>
 
     <!-- show buttons to manage users -->
-    <?php if (in_array('group_admin', \App\Controllers\Controller::getUserRoles($_SESSION['username']), true)): ?>
+    <?php if (\App\Controllers\Controller::isGroupAdmin($_SESSION['username'])): ?>
         <fieldset>
             <legend>Admin Actions</legend>
 
