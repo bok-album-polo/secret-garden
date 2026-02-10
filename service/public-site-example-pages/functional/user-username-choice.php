@@ -2,6 +2,8 @@
 $user = $_SESSION['dispatched_user'] ?? [];
 $dispatched_username = $user['username'] ?? '';
 $dispatched_display_name = $user['display_name'] ?? '';
+$config = \App\controllers\Config::instance();
+$password_allow_custom = $config->application_config['password_allow_custom'];
 ?>
 
 <section>
@@ -25,10 +27,12 @@ $dispatched_display_name = $user['display_name'] ?? '';
                    readonly><br>
         </div>
 
-        <div style="margin-bottom:1em;">
-            <label>Password</label><br>
-            <input type="password" name="password" required><br>
-        </div>
+        <?php if ($password_allow_custom): ?>
+            <div style="margin-bottom:1em;">
+                <label>Password</label><br>
+                <input type="password" name="password" required><br>
+            </div>
+        <?php endif; ?>
 
         <button type="submit">Create user</button>
     </form>
