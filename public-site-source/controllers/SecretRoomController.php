@@ -47,7 +47,7 @@ class SecretRoomController extends Controller
                 case 'username_choice':
                     $userData = UserNamePool::getDispatchedUser();
                     $_SESSION['dispatched_user'] = $userData;
-                    $this->render("username-choice", [
+                    $this->render("user-username-choice", [
                         'title' => 'Username Choice',
                     ]);
                     break;
