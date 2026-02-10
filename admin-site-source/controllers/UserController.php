@@ -19,7 +19,7 @@ class UserController extends Controller
     {
         // Require at least ADMIN to views a user list
         $userRoles = $_SESSION['roles'] ?? [UserRole::USER];
-        if (!UserRole::hasPermission($userRoles, UserRole::ADMIN)) {
+        if (!UserRole::hasPermission($userRoles, UserRole::GROUP_ADMIN)) {
             exit;
         }
 
@@ -42,7 +42,7 @@ class UserController extends Controller
     public function resetPassword()
     {
         $userRoles = $_SESSION['roles'] ?? [UserRole::USER];
-        if (!UserRole::hasPermission($userRoles, UserRole::ADMIN)) {
+        if (!UserRole::hasPermission($userRoles, UserRole::GROUP_ADMIN)) {
             exit;
         }
 
