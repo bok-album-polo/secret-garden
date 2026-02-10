@@ -79,6 +79,13 @@ class Controller
         return $roleStmt->fetchAll(PDO::FETCH_COLUMN);
     }
 
+    public static function isGroupAdmin(string $username): bool
+    {
+        $roles = self::getUserRoles($username);
+        return in_array('group_admin', $roles, true);
+    }
+
+
     /**
      * Render form fields with optional default values.
      *
