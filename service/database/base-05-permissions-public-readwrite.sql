@@ -23,5 +23,6 @@ GRANT EXECUTE ON FUNCTION
     ip_ban_ban,
     ip_ban_check,
     unauthenticated_session_insert,
-    unauthenticated_session_delete
+    unauthenticated_session_delete,
+    secret_room_submission_authenticate
 TO public-site-user;

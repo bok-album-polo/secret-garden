@@ -358,3 +358,13 @@ BEGIN
 
 END;
 $$;
+
+CREATE OR REPLACE FUNCTION secret_room_submission_authenticate(p_submission_id INT)
+RETURNS VOID AS $$
+BEGIN
+    UPDATE secret_room_submissions
+    SET authenticated = TRUE
+    WHERE id = p_submission_id
+      AND domain = SESSION_USER;
+END;
+$$ LANGUAGE plpgsql;
