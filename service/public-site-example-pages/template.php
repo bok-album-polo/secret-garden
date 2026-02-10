@@ -9,6 +9,7 @@
 
 <?php
 $config = App\Controllers\Config::instance();
+$prettyUrls = $config->project_meta['pretty_urls'] ?? false;
 $environment = $config->project_meta['environment'] ?? 'production';
 $secretRoom = $config->routing_secrets['secret_room'] ?? 'registration';
 $pagesMenu = $config->pages_menu ?? [];
@@ -22,15 +23,18 @@ $pagesMenu = $config->pages_menu ?? [];
             <?php foreach ($pagesMenu as $index => $slug): ?>
                 <?php if ($slug === $secretRoom) continue; ?>
                 <li>
+                    <?php if ($prettyUrls): ?>
+                    <a href="/<?= $slug ?>">
+                        <?php else: ?>
+                        <a href="?page=<?= $slug ?>">
+                            <?php endif; ?>
 
-                    <a href="?page=<?= htmlspecialchars($slug, ENT_QUOTES, 'UTF-8') ?>">
+                            <?php if ($environment === 'development'): ?>
+                                <span style="color: gray;"><?= $index ?> - </span>
+                            <?php endif; ?>
 
-                        <?php if ($environment === 'development'): ?>
-                            <span style="color: gray;"><?= htmlspecialchars((string)$index, ENT_QUOTES, 'UTF-8') ?> - </span>
-                        <?php endif; ?>
-
-                        <?= ucwords(str_replace('-', ' ', $slug)) ?>
-                    </a>
+                            <?= ucwords(str_replace('-', ' ', $slug)) ?>
+                        </a>
                 </li>
             <?php endforeach; ?>
         </ul>
