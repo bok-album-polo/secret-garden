@@ -22,6 +22,14 @@ $secretDoor = $config->routing_secrets['secret_door'];
 $secretRoom = $config->routing_secrets['secret_room'];
 $environment = $config->project_meta['environment'] ?? 'production';
 
+$prettyUrls = $config->project_meta['pretty_urls'] ?? false;
+
+if ($prettyUrls) {
+    $uri = trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
+    $page = $uri ?: 'home';
+} else {
+    $page = $_GET['page'] ?? 'home';
+}
 
 $page = $_GET['page'] ?? 'home';
 
