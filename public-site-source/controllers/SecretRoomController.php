@@ -201,6 +201,12 @@ class SecretRoomController extends Controller
             'ip_address' => $_SERVER['REMOTE_ADDR'],
         ];
 
+        if (\App\Controllers\Controller::isGroupAdmin($_SESSION['username'])) {
+        // Add authenticated if user is group admin
+            $fields[] = ['name' => 'authenticated'];
+            $data['authenticated'] = true;
+        }
+
 
         $fields = array_merge($fields, [
             ['name' => 'username'],
