@@ -1,8 +1,8 @@
 <?php
 
-namespace models;
+namespace App\Models;
 
-use Controllers\Database;
+use App\Core\Database;
 
 class User
 {
@@ -10,7 +10,7 @@ class User
 
     public function __construct()
     {
-        $this->db = Database::getInstance()->getConnection();
+        $this->db = Database::getInstance();
     }
 
     public function findByUsername($username)
@@ -19,7 +19,7 @@ class User
             SELECT * 
             FROM users 
             WHERE username = :username 
-            ORDER BY created_at DESC 
+            ORDER BY time_dispatched DESC 
             LIMIT 1
         ');
         $stmt->execute(['username' => $username]);

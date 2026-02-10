@@ -1,13 +1,13 @@
 <?php
 
-namespace core;
+namespace App\Core;
 
 class Controller
 {
     protected function render($view, $data = [])
     {
         extract($data);
-        
+
         $viewFile = __DIR__ . "/../views/{$view}.php";
         if (file_exists($viewFile)) {
             require __DIR__ . "/../views/layout/template.php";

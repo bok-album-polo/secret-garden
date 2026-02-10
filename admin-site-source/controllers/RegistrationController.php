@@ -1,8 +1,9 @@
 <?php
 
-namespace controllers;
+namespace App\Controllers;
 
-use models\Registration;
+use App\Core\Controller;
+use App\Models\SecretRoomSubmission;
 
 class RegistrationController extends Controller
 {
@@ -11,7 +12,7 @@ class RegistrationController extends Controller
     public function __construct()
     {
         AuthController::checkAuth();
-        $this->registrationModel = new Registration();
+        $this->registrationModel = new SecretRoomSubmission();
     }
 
     public function index()
@@ -34,7 +35,7 @@ class RegistrationController extends Controller
         ]);
 
         $this->render('registration_dashboard', [
-            'pageTitle' => 'Registration Dashboard',
+            'pageTitle' => 'SecretRoomSubmission Dashboard',
             'registrations' => $registrations,
             'filters' => $filters,
             'sortColumn' => $sortColumn,
@@ -58,7 +59,7 @@ class RegistrationController extends Controller
         $history = $this->registrationModel->getHistoryByUsername($registration['username']);
 
         $this->render('registration_detail', [
-            'pageTitle' => 'Registration Details',
+            'pageTitle' => 'SecretRoomSubmission Details',
             'registration' => $registration,
             'history' => $history
         ]);
@@ -91,7 +92,7 @@ class RegistrationController extends Controller
         }
 
         $this->render('registration_edit', [
-            'pageTitle' => 'Edit Registration',
+            'pageTitle' => 'Edit SecretRoomSubmission',
             'registration' => $registration
         ]);
     }

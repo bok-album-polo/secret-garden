@@ -1,11 +1,11 @@
 <?php
 
-use core\Role;
+use core\UserRole;
 
-$userRoles = $_SESSION['roles'] ?? [Role::USER];
+$userRoles = $_SESSION['roles'] ?? [UserRole::USER];
 
 
-if (!Role::hasPermission($userRoles, Role::ADMIN)) {
+if (!UserRole::hasPermission($userRoles, UserRole::ADMIN)) {
     exit;
 }
 ?>

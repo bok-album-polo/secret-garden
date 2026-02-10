@@ -1,11 +1,11 @@
 <?php
 
-namespace core;
+namespace App\Core;
 
-use Controllers\Database;
+use App\Core\Database;
 use PDO;
 
-class Role
+class UserRole
 {
     public const string USER = 'user';
     public const string ADMIN = 'admin';
@@ -72,7 +72,7 @@ class Role
 
     public static function getUserRoles($username)
     {
-        $db = Database::getInstance()->getConnection();
+        $db = Database::getInstance();
         $stmt = $db->prepare("SELECT role FROM user_roles WHERE username = :username");
         $stmt->execute(['username' => $username]);
         $results = $stmt->fetchAll(PDO::FETCH_COLUMN);

@@ -1,9 +1,10 @@
 <?php
 
-namespace controllers;
+namespace App\Controllers;
 
-use core\Role;
-use models\User;
+use App\Core\Controller;
+use App\Models\User;
+use core\UserRole;
 
 class UserController extends Controller
 {
@@ -18,8 +19,8 @@ class UserController extends Controller
     public function index()
     {
         // Require at least ADMIN to views a user list
-        $userRoles = $_SESSION['roles'] ?? [Role::USER];
-        if (!Role::hasPermission($userRoles, Role::ADMIN)) {
+        $userRoles = $_SESSION['roles'] ?? [UserRole::USER];
+        if (!UserRole::hasPermission($userRoles, UserRole::ADMIN)) {
             exit;
         }
 
@@ -28,7 +29,7 @@ class UserController extends Controller
 
         // Attach roles to each user for display
         foreach ($users as &$user) {
-            $user['roles'] = Role::getUserRoles($user['username']);
+            $user['roles'] = UserRole::getUserRoles($user['username']);
         }
 
         $this->render('user_management', [
@@ -41,8 +42,8 @@ class UserController extends Controller
 
     public function resetPassword()
     {
-        $userRoles = $_SESSION['roles'] ?? [Role::USER];
-        if (!Role::hasPermission($userRoles, Role::ADMIN)) {
+        $userRoles = $_SESSION['roles'] ?? [UserRole::USER];
+        if (!UserRole::hasPermission($userRoles, UserRole::ADMIN)) {
             exit;
         }
 
@@ -61,9 +62,9 @@ class UserController extends Controller
 
     public function updateRoles()
     {
-        $userRoles = $_SESSION['roles'] ?? [Role::USER];
+        $userRoles = $_SESSION['roles'] ?? [UserRole::USER];
         // Only SUPERADMIN can grant/revoke roles
-        if (!Role::hasPermission($userRoles, Role::SUPERADMIN)) {
+        if (!UserRole::hasPermission($userRoles, UserRole::SUPERADMIN)) {
             exit;
         }
 
@@ -73,12 +74,12 @@ class UserController extends Controller
 
             if ($username) {
                 // Get current roles
-                $currentRoles = Role::getUserRoles($username);
+                $currentRoles = UserRole::getUserRoles($username);
                 
                 // Determine roles to add
                 $toAdd = array_diff($roles, $currentRoles);
                 foreach ($toAdd as $role) {
-                    if (Role::isValid($role)) {
+                    if (UserRole::isValid($role)) {
                         $this->userModel->addRole($username, $role);
                     }
                 }
@@ -88,7 +89,7 @@ class UserController extends Controller
                 // Assuming the UI shows all available roles (user, admin, superadmin).
                 // So we should remove roles that are in currentRoles but not in the posted $roles.
                 
-                $allPossibleRoles = Role::getAll();
+                $allPossibleRoles = UserRole::getAll();
                 // But wait, if the UI only sends checked roles, unchecked ones should be removed.
                 
                 $toRemove = array_diff($currentRoles, $roles);

@@ -2,12 +2,12 @@
 
 session_start();
 
-require_once __DIR__ . '/includes.php';
+require_once __DIR__ . '/autoloader.php';
 
-use controllers\AuthController;
-use controllers\RegistrationController;
-use controllers\UserController;
-use core\Router;
+use App\Controllers\AuthController;
+use App\Controllers\RegistrationController;
+use App\Controllers\UserController;
+use App\Core\Router;
 
 $router = new Router();
 

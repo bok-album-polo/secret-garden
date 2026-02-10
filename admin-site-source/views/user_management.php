@@ -1,6 +1,6 @@
 <?php
 
-use core\Role;
+use core\UserRole;
 
 ?>
 
@@ -45,7 +45,7 @@ use core\Role;
                         </button>
 
                         <!-- Manage Roles (Superadmin only) -->
-                        <?php if (Role::hasPermission($currentUserRoles, Role::SUPERADMIN)): ?>
+                        <?php if (UserRole::hasPermission($currentUserRoles, UserRole::SUPERADMIN)): ?>
                             <button class="btn btn-sm btn-info" data-bs-toggle="modal"
                                     data-bs-target="#manageRolesModal"
                                     data-username="<?= htmlspecialchars($user['username']) ?>"
@@ -105,7 +105,7 @@ use core\Role;
                     <input type="hidden" name="username" id="rolesUsername">
                     <p>Select roles for <strong id="rolesUsernameDisplay"></strong>:</p>
 
-                    <?php foreach (Role::getAll() as $role): ?>
+                    <?php foreach (UserRole::getAll() as $role): ?>
                         <div class="form-check">
                             <input class="form-check-input role-checkbox" type="checkbox" name="roles[]"
                                    value="<?= $role ?>" id="role_<?= $role ?>">

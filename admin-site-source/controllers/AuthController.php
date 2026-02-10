@@ -1,10 +1,10 @@
 <?php
 
-namespace controllers;
+namespace App\Controllers;
 
-use core\Controller;
-use core\Role;
-use models\User;
+use App\Core\Controller;
+use App\Core\UserRole;
+use App\Models\User;
 
 class AuthController extends Controller
 {
@@ -40,13 +40,13 @@ class AuthController extends Controller
             $_SESSION['username'] = $user['username'];
 
             // Fetch roles from user_roles table
-            $roles = Role::getUserRoles($user['username']);
+            $roles = UserRole::getUserRoles($user['username']);
 
             // Store roles as an array in session
             $_SESSION['roles'] = $roles;
 
             // Store highest role for convenience/backward compatibility
-            $_SESSION['role'] = Role::getHighestRole($roles);
+            $_SESSION['role'] = UserRole::getHighestRole($roles);
 
             $this->redirect('index.php');
         }
