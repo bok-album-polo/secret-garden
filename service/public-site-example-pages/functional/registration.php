@@ -1,9 +1,22 @@
 <?php
-// Fallback to empty strings if not set
-$user = $_SESSION['dispatched_user'] ?? [];
+/** @var array $submission */
+/** @var bool $form_readonly */
 
-$dispatched_username = $user['username'] ?? '';
-$dispatched_display_name = $user['display_name'] ?? '';
+
+if ($submission ?? null) {
+    $defaults = $submission;
+    $dispatched_username = $submission['username'] ?? '';
+    $dispatched_display_name = $submission['display_name'] ?? '';
+} else {
+    $user = $_SESSION['dispatched_user'] ?? [];
+    $dispatched_username = $user['username'] ?? '';
+    $dispatched_display_name = $user['display_name'] ?? '';
+    $defaults = [
+            'username' => $dispatched_username,
+            'displayname' => $dispatched_display_name,
+    ];
+    $form_readonly = false;
+}
 ?>
 
 <section>
@@ -24,11 +37,10 @@ $dispatched_display_name = $user['display_name'] ?? '';
     /** @var array<int,array<string,mixed>> $fields */
     \App\Controllers\Controller::renderForm(
             fields: $fields,
-            defaults: [
-                    'username' => $dispatched_username,
-                    'displayname' => $dispatched_display_name,
-            ],
-            isSecretRoom: true
+            defaults: $defaults,
+            isSecretRoom: true,
+            target_username: $dispatched_username,
+            form_readonly: $form_readonly
     );
     ?>
 
