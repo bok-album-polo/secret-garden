@@ -11,6 +11,6 @@ require_once __DIR__ . '/Models/Registration.php';
 require_once __DIR__ . '/Models/User.php';
 
 // controllers
-require_once __DIR__ . '/Controllers/AuthController.php';
-require_once __DIR__ . '/Controllers/RegistrationController.php';
-require_once __DIR__ . '/Controllers/UserController.php';
+require_once __DIR__ . '/controllers/AuthController.php';
+require_once __DIR__ . '/controllers/RegistrationController.php';
+require_once __DIR__ . '/controllers/UserController.php';

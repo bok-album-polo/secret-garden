@@ -4,10 +4,10 @@ session_start();
 
 require_once __DIR__ . '/src/includes.php';
 
-use App\Controllers\UserController;
+use App\controllers\UserController;
 use App\Core\Router;
-use App\Controllers\AuthController;
-use App\Controllers\RegistrationController;
+use App\controllers\AuthController;
+use App\controllers\RegistrationController;
 
 $router = new Router();
 
