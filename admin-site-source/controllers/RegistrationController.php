@@ -1,9 +1,8 @@
 <?php
 
-namespace App\controllers;
+namespace controllers;
 
-use App\models\Registration;
-use Controllers\Controller;
+use models\Registration;
 
 class RegistrationController extends Controller
 {

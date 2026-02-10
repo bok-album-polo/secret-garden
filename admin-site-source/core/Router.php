@@ -1,8 +1,8 @@
 <?php
 
-namespace App\core;
+namespace core;
 
-use App\controllers\RegistrationController;
+use controllers\RegistrationController;
 
 class Router
 {

@@ -1,5 +1,6 @@
 <?php
-use App\core\Role;
+
+use core\Role;
 
 ?>
 
