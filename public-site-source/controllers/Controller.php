@@ -48,6 +48,7 @@ class Controller
         echo bin2hex(random_bytes($randomBytes));
         echo '</div>';
     }
+
     protected function redirect(string $url): void
     {
         header("Location: {$url}");
@@ -85,13 +86,18 @@ class Controller
      * @param array $defaults Associative array of default values keyed by field name.
      * @return string         The generated HTML markup.
      */
-    public static function renderForm(array $fields, array $defaults = [], bool $isSecretRoom = false): string
+    public static function renderForm(array   $fields,
+                                      array   $defaults = [],
+                                      bool    $isSecretRoom = false,
+                                      ?string $target_username = null,
+                                      bool    $form_readonly = false): string
     {
         $config = Config::instance();
-        if ($isSecretRoom && $config->project_meta['mode'] === 'readwrite') {
+
+        if ($isSecretRoom && $config->project_meta['mode'] === 'readwrite' && $_SESSION['username'] == $target_username) {
             $db = Database::getInstance();
             $stmt = $db->prepare("SELECT * FROM secret_room_submission_get(:username)");
-            $stmt->bindValue(':username', $_SESSION['username'], PDO::PARAM_STR);
+            $stmt->bindValue(':username', $_SESSION['username']);
             $stmt->execute();
             $defaults = $stmt->fetch(PDO::FETCH_ASSOC);
         }
@@ -110,7 +116,11 @@ class Controller
 
             $required = !empty($field['required']) ? ' required' : '';
             $maxlength = isset($field['maxlength']) ? ' maxlength="' . (int)$field['maxlength'] . '"' : '';
-            $readonly = !empty($field['readonly']) ? ' readonly' : '';
+            if ($form_readonly) {
+                $readonly = ' readonly';
+            } else {
+                $readonly = !empty($field['readonly']) ? ' readonly' : '';
+            }
 
             // Hidden fields: no label or wrapper
             if ($type === 'hidden') {
@@ -137,12 +147,25 @@ class Controller
             $html .= '</div>';
         }
 
-        $html .= '<div>';
-        $html .= '<button type="submit" style="margin-top: 1em;">Submit</button>';
-        $html .= '</div>';
+        if (!$form_readonly) {
+            $html .= '<div>';
+            $html .= '<button type="submit" style="margin-top: 1em;">Submit</button>';
+            $html .= '</div>';
+        }
 
         $html .= '</form>';
 
+        if ($form_readonly) {
+            $record_id = $defaults["username"];
+            $html .= <<<EDIT_FORM
+           <form action="" method="POST" style="display:inline;">
+                            <input type="hidden" name="action" value="admin_edit_submission">
+                            <input type="hidden" name="username" value="$record_id">
+                            <button type="submit">Edit submission</button>
+                        </form>
+EDIT_FORM;
+
+        }
         return $html;
     }
 
@@ -185,7 +208,7 @@ class Controller
             // Build SQL
             $columns = implode(', ', $dbColumns);
             $table = $isSecretRoom ? 'secret_room_submissions' : 'secret_door_submissions';
-            $sql = "INSERT INTO {$table} ({$columns}) VALUES ({$placeholders})";
+            $sql = "INSERT INTO $table ($columns) VALUES ($placeholders)";
 
             // Prepare and bind values from $data
             $stmt = $this->db->prepare($sql);
