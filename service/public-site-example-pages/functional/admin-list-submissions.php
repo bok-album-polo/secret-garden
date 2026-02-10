@@ -38,15 +38,8 @@
 
                         <form action="" method="POST" style="display:inline;">
                             <input type="hidden" name="action" value="admin_view_submission">
-                            <input type="hidden" name="id" value="<?= $submission['id'] ?>">
+                            <input type="hidden" name="username" value="<?= $submission['username'] ?>">
                             <button type="submit">View submission</button>
-                        </form>
-
-                        <!-- admin_edit_submission -->
-                        <form action="" method="POST" style="display:inline;">
-                            <input type="hidden" name="action" value="admin_edit_submission">
-                            <input type="hidden" name="id" value="<?= $submission['id'] ?>">
-                            <button type="submit">Edit submission</button>
                         </form>
                     </td>
                 </tr>
