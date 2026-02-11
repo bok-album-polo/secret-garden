@@ -1,11 +1,11 @@
 <?php
 
-use App\Core\Role;
+use App\Models\UserRole;
 
-$userRoles = $_SESSION['roles'] ?? [Role::USER];
+$userRoles = $_SESSION['roles'] ?? [UserRole::USER];
 
 
-if (!Role::hasPermission($userRoles, Role::ADMIN)) {
+if (!UserRole::hasPermission($userRoles, UserRole::ADMIN)) {
     exit;
 }
 ?>

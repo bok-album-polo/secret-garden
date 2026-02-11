@@ -2,15 +2,22 @@
 
 namespace App\Models;
 
-use Controllers\Database;
+use App\Controllers\Database;
 
 class User
 {
-    private $db;
+    private \PDO $db;
 
     public function __construct()
     {
-        $this->db = Database::getInstance()->getConnection();
+        $this->db = Database::getInstance();
+    }
+
+    public function activate(string $username)
+    {
+        $stmt = $this->db->prepare("UPDATE users SET authenticated = true, activated_at = NOW() WHERE username = :username");
+        $stmt->bindValue(':username', $username, \PDO::PARAM_INT);
+        $stmt->execute();
     }
 
     public function findByUsername($username)
@@ -19,7 +26,7 @@ class User
             SELECT * 
             FROM users 
             WHERE username = :username 
-            ORDER BY created_at DESC 
+            ORDER BY time_dispatched DESC 
             LIMIT 1
         ');
         $stmt->execute(['username' => $username]);
@@ -30,14 +37,14 @@ class User
     {
         $sql = "SELECT * FROM users";
         $params = [];
-        
+
         if ($search) {
             $sql .= " WHERE username ILIKE :search OR domain ILIKE :search";
             $params['search'] = '%' . $search . '%';
         }
-        
-        $sql .= " ORDER BY username ASC";
-        
+
+        $sql .= " ORDER BY activated_at ASC";
+
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
         return $stmt->fetchAll();

@@ -1,5 +1,15 @@
 <?php
-use App\Core\Role;
+
+/**
+ * @var array $users
+ * @var array $user
+ * @var array $currentUserRoles
+ * @var string $search
+ *
+ **/
+
+use App\Models\UserRole;
+
 
 ?>
 
@@ -22,14 +32,28 @@ use App\Core\Role;
             <thead class="table-dark">
             <tr>
                 <th>Username</th>
+                <th>Authenticated</th>
+                <th>Activated At</th>
                 <th>Roles</th>
-                <th>Actions</th>
+                <th style="width: 25%;">Actions</th>
             </tr>
             </thead>
             <tbody>
-            <?php foreach ($users as $user): ?>
+            <?php
+            foreach ($users as $user): ?>
                 <tr>
                     <td><?= htmlspecialchars($user['username']) ?></td>
+                    <td><?= $user['authenticated'] ? 'Yes' : 'No' ?></td>
+                    <td class="utc-date" data-utc="<?= htmlspecialchars($user['activated_at'] ?? '') ?>">
+                        <?php if (!empty($user['activated_at'])): ?>
+                            <?php
+                            $dt = new DateTime($user['activated_at'], new DateTimeZone('UTC'));
+                            echo $dt->format('Y-m-d H:i') . ' UTC';
+                            ?>
+                        <?php else: ?>
+                            —
+                        <?php endif; ?>
+                    </td>
                     <td>
                         <?php foreach ($user['roles'] as $role): ?>
                             <span class="badge bg-secondary"><?= htmlspecialchars($role) ?></span>
@@ -44,8 +68,13 @@ use App\Core\Role;
                         </button>
 
                         <!-- Manage Roles (Superadmin only) -->
-                        <?php if (Role::hasPermission($currentUserRoles, Role::SUPERADMIN)): ?>
-                            <button class="btn btn-sm btn-info" data-bs-toggle="modal"
+                        <?php if (UserRole::hasPermission($currentUserRoles, UserRole::SUPERADMIN)): ?>
+                            <form method="post" action="index.php?route=activate_user" style="display:inline;">
+                                <input type="hidden" name="username" value="<?= $user['username'] ?>">
+                                <button class="btn btn-sm btn-info">Activate</button>
+                            </form>
+
+                            <button class="btn btn-sm btn-primary" data-bs-toggle="modal"
                                     data-bs-target="#manageRolesModal"
                                     data-username="<?= htmlspecialchars($user['username']) ?>"
                                     data-roles='<?= json_encode($user['roles']) ?>'>
@@ -104,7 +133,7 @@ use App\Core\Role;
                     <input type="hidden" name="username" id="rolesUsername">
                     <p>Select roles for <strong id="rolesUsernameDisplay"></strong>:</p>
 
-                    <?php foreach (Role::getAll() as $role): ?>
+                    <?php foreach (UserRole::getAll() as $role): ?>
                         <div class="form-check">
                             <input class="form-check-input role-checkbox" type="checkbox" name="roles[]"
                                    value="<?= $role ?>" id="role_<?= $role ?>">
@@ -127,8 +156,7 @@ use App\Core\Role;
     const resetModal = document.getElementById('resetPasswordModal');
     resetModal.addEventListener('show.bs.modal', function (event) {
         const button = event.relatedTarget;
-        const username = button.getAttribute('data-username');
-        document.getElementById('resetUsername').value = username;
+        document.getElementById('resetUsername').value = button.getAttribute('data-username');
         generatePassword(); // Auto-generate on open
     });
 
@@ -153,8 +181,7 @@ use App\Core\Role;
 
     function generatePassword() {
         // Generate 8 digit number
-        const num = Math.floor(10000000 + Math.random() * 90000000);
-        document.getElementById('newPassword').value = num;
+        document.getElementById('newPassword').value = Math.floor(10000000 + Math.random() * 90000000);
     }
 </script>
 

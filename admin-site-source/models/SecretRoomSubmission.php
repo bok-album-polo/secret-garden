@@ -2,16 +2,16 @@
 
 namespace App\Models;
 
-use Controllers\Database;
+use App\Controllers\Database;
 use PDO;
 
-class Registration
+class SecretRoomSubmission
 {
     private PDO $db;
 
     public function __construct()
     {
-        $this->db = Database::getInstance()->getConnection();
+        $this->db = Database::getInstance();
     }
 
 
@@ -20,7 +20,7 @@ class Registration
         // Subquery to get the latest version of each registration
         $subquery = "
             SELECT DISTINCT ON (r.username) r.*, u.domain, u.pk_sequence
-            FROM registration_form_submissions r
+            FROM secret_room_submissions r
             JOIN users u ON r.username = u.username
             ORDER BY r.username, r.created_at DESC
         ";
@@ -78,7 +78,7 @@ class Registration
     {
         $stmt = $this->db->prepare("
             SELECT r.*, u.domain, u.pk_sequence 
-            FROM registration_form_submissions r
+            FROM secret_room_submissions r
             JOIN users u ON r.username = u.username
             WHERE r.id = :id
         ");
@@ -90,7 +90,7 @@ class Registration
     {
         $stmt = $this->db->prepare("
             SELECT r.*, u.domain, u.pk_sequence 
-            FROM registration_form_submissions r
+            FROM secret_room_submissions r
             JOIN users u ON r.username = u.username
             WHERE r.username = :username 
             ORDER BY r.created_at DESC
@@ -99,49 +99,32 @@ class Registration
         return $stmt->fetchAll();
     }
 
-    public function authenticate(int $id): bool
+    public function authenticate(int $id)
     {
-        // 1. Get the username for this registration
-        $stmt = $this->db->prepare("SELECT username FROM registration_form_submissions WHERE id = :id");
-        $stmt->execute(['id' => $id]);
-        $row = $stmt->fetch();
-
-        if (!$row) {
-            return false; // registration not found
-        }
-
-        $username = $row['username'];
-
-        // 2. Update the registration to authenticated
-        $updateReg = $this->db->prepare("UPDATE registration_form_submissions SET authenticated = true WHERE id = :id");
-        $successReg = $updateReg->execute(['id' => $id]);
-
-        // 3. Update the corresponding user to authenticated
-        $updateUser = $this->db->prepare("UPDATE users SET authenticated = true WHERE username = :username");
-        $successUser = $updateUser->execute(['username' => $username]);
-
-        // 4. Return true if both succeeded
-        return $successReg && $successUser;
+        // 1. Activate the submission
+        $stmt = $this->db->prepare("SELECT * FROM secret_room_submission_authenticate(:submission_id)");
+        $stmt->bindValue(':submission_id', $id, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
 
     public function createNewVersion($data, $adminUsername): bool
     {
         $sql = "
-            INSERT INTO registration_form_submissions 
-            (username, email, authenticated, created_by) 
+            INSERT INTO secret_room_submissions 
+            (username, primary_email, authenticated, created_by) 
             VALUES 
-            (:username, :email, :authenticated, :created_by)
+            (:username, :primary_email, :authenticated, :created_by)
         ";
 
         $stmt = $this->db->prepare($sql);
-        
+
         $stmt->bindValue(':username', $data['username']);
-        $stmt->bindValue(':email', $data['email']);
-        // Explicitly bind boolean for Postgres
+        $stmt->bindValue(':primary_email', $data['primary_email']);
         $stmt->bindValue(':authenticated', $data['authenticated'], PDO::PARAM_BOOL);
         $stmt->bindValue(':created_by', $adminUsername);
-        
+
         return $stmt->execute();
     }
 }

@@ -1,25 +1,32 @@
 <?php
 
-namespace App\Core;
+namespace App\Models;
 
-use Controllers\Database;
+use App\Controllers\Database;
 use PDO;
 
-class Role
+class UserRole
 {
     public const string USER = 'user';
     public const string ADMIN = 'admin';
+    public const string GROUP_ADMIN = 'group_admin'; //Used on the public site
     public const string SUPERADMIN = 'superadmin';
 
     public static function getAll()
     {
         return [
             self::ADMIN,
+            self::GROUP_ADMIN,
             self::SUPERADMIN,
         ];
     }
 
     public static function isValid($role)
+    {
+        return in_array($role, self::getAll());
+    }
+
+    public static function isGroupAdmin($role)
     {
         return in_array($role, self::getAll());
     }
@@ -61,7 +68,8 @@ class Role
         $hierarchy = [
             self::USER => 1,
             self::ADMIN => 2,
-            self::SUPERADMIN => 3,
+            self::GROUP_ADMIN => 3,
+            self::SUPERADMIN => 4,
         ];
 
         $userLevel = $hierarchy[$highestRole] ?? 0;
@@ -70,9 +78,9 @@ class Role
         return $userLevel >= $requiredLevel;
     }
 
-    public static function getUserRoles($username)
+    public static function getUserRoles($username): array
     {
-        $db = Database::getInstance()->getConnection();
+        $db = Database::getInstance();
         $stmt = $db->prepare("SELECT role FROM user_roles WHERE username = :username");
         $stmt->execute(['username' => $username]);
         $results = $stmt->fetchAll(PDO::FETCH_COLUMN);

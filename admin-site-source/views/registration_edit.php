@@ -1,11 +1,11 @@
 <?php
 
-use App\Core\Role;
+use App\Models\UserRole;
 
-$userRoles = $_SESSION['roles'] ?? [Role::USER];
+$userRoles = $_SESSION['roles'] ?? [UserRole::USER];
 
 
-if (!Role::hasPermission($userRoles, Role::ADMIN)) {
+if (!UserRole::hasPermission($userRoles, UserRole::ADMIN)) {
     exit;
 }
 ?>
@@ -31,7 +31,7 @@ if (!Role::hasPermission($userRoles, Role::ADMIN)) {
 
                 <div class="mb-3">
                     <label for="email" class="form-label">Email</label>
-                    <input type="email" class="form-control" id="email" name="email" value="<?= htmlspecialchars($registration['email']) ?>">
+                    <input type="email" class="form-control" id="email" name="email" value="<?= htmlspecialchars($registration['primary_email']??'') ?>">
                 </div>
 
                 <div class="mb-3 form-check">

@@ -2,22 +2,22 @@
 
 namespace App\Controllers;
 
-use App\Core\Role;
 use App\Models\User;
-use Controllers\Controller;
+use App\Models\UserRole;
 
-class AuthController extends Controller
+class LoginController extends Controller
 {
-    private $userModel;
+    private User $userModel;
 
     public function __construct()
     {
+        parent::__construct();
         $this->userModel = new User();
     }
 
     public function showLogin()
     {
-        if (isset($_SESSION['username'])) {
+        if (Session::isLoggedIn()) {
             $this->redirect('index.php');
         }
         $this->render('login', ['pageTitle' => 'Login']);
@@ -36,17 +36,11 @@ class AuthController extends Controller
                 $this->redirect('index.php?route=login&error=2');
             }
 
-            session_regenerate_id(true);
+
+            $_SESSION['user_logged_in'] = true;
             $_SESSION['username'] = $user['username'];
-            
-            // Fetch roles from user_roles table
-            $roles = Role::getUserRoles($user['username']);
-            
-            // Store roles as an array in session
-            $_SESSION['roles'] = $roles;
-            
-            // Store highest role for convenience/backward compatibility
-            $_SESSION['role'] = Role::getHighestRole($roles);
+            $_SESSION['roles'] = UserRole::getUserRoles($user['username']);;
+
 
             $this->redirect('index.php');
         }
@@ -56,16 +50,7 @@ class AuthController extends Controller
 
     public function logout()
     {
-        $_SESSION = [];
-        session_destroy();
+        Session::logout();
         $this->redirect('index.php?route=login');
-    }
-
-    public static function checkAuth()
-    {
-        if (!isset($_SESSION['username'])) {
-            header('Location: index.php?route=login');
-            exit;
-        }
     }
 }

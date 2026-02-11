@@ -2,32 +2,31 @@
 
 session_start();
 
-require_once __DIR__ . '/src/includes.php';
+require_once __DIR__ . '/autoloader.php';
 
+use App\Controllers\LoginController;
+use App\Controllers\SecretRoomController;
 use App\Controllers\UserController;
-use App\Core\Router;
-use App\Controllers\AuthController;
-use App\Controllers\RegistrationController;
 
-$router = new Router();
-
-$router->add('login', AuthController::class, 'showLogin');
-$router->add('logout', AuthController::class, 'logout');
-$router->add('dashboard', RegistrationController::class, 'index');
-$router->add('view_registration', RegistrationController::class, 'views');
-$router->add('edit_registration', RegistrationController::class, 'edit');
-$router->add('authenticate', RegistrationController::class, 'authenticate');
-
-// User Management Routes
-$router->add('user_management', UserController::class, 'index');
-$router->add('user_reset_password', UserController::class, 'resetPassword');
-$router->add('user_update_roles', UserController::class, 'updateRoles');
+$route = $_GET['route'] ?? 'dashboard';
 
 
 // Handle login POST
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_GET['route'] ?? '') === 'login') {
-    $router->add('login', AuthController::class, 'login');
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $route === 'login') {
+    (new LoginController())->login();
+    exit;
 }
 
-$route = $_GET['route'] ?? 'dashboard';
-$router->dispatch($route);
+match ($route) {
+    'login' => (new LoginController())->showLogin(),
+    'logout' => (new LoginController())->logout(),
+    'dashboard' => (new SecretRoomController())->index(),
+    'view_registration' => (new SecretRoomController())->view(),
+    'edit_registration' => (new SecretRoomController())->edit(),
+    'activate_user' => (new UserController())->activateUser(),
+    'authenticate' => (new SecretRoomController())->authenticate(),
+    'user_management' => (new UserController())->index(),
+    'user_reset_password' => (new UserController())->resetPassword(),
+    'user_update_roles' => (new UserController())->updateRoles(),
+    default => (new SecretRoomController())->index(),
+};

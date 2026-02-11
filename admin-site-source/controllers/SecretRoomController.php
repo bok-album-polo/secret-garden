@@ -2,17 +2,17 @@
 
 namespace App\Controllers;
 
-use App\Models\Registration;
-use Controllers\Controller;
+use App\Models\SecretRoomSubmission;
+use App\Models\UserRole;
 
-class RegistrationController extends Controller
+class SecretRoomController extends Controller
 {
-    private $registrationModel;
+    private SecretRoomSubmission $registrationModel;
 
     public function __construct()
     {
-        AuthController::checkAuth();
-        $this->registrationModel = new Registration();
+        parent::__construct();
+        $this->registrationModel = new SecretRoomSubmission();
     }
 
     public function index()
@@ -35,7 +35,7 @@ class RegistrationController extends Controller
         ]);
 
         $this->render('registration_dashboard', [
-            'pageTitle' => 'Registration Dashboard',
+            'pageTitle' => 'SecretRoomSubmission Dashboard',
             'registrations' => $registrations,
             'filters' => $filters,
             'sortColumn' => $sortColumn,
@@ -59,7 +59,7 @@ class RegistrationController extends Controller
         $history = $this->registrationModel->getHistoryByUsername($registration['username']);
 
         $this->render('registration_detail', [
-            'pageTitle' => 'Registration Details',
+            'pageTitle' => 'SecretRoomSubmission Details',
             'registration' => $registration,
             'history' => $history
         ]);
@@ -85,14 +85,19 @@ class RegistrationController extends Controller
             ];
 
             $adminUsername = $_SESSION['username'];
-            
+
             if ($this->registrationModel->createNewVersion($newData, $adminUsername)) {
                 $this->redirect('index.php?route=dashboard');
             }
         }
 
+
+        if (UserRole::hasPermission($_SESSION['roles'], UserRole::GROUP_ADMIN)) {
+            $registration['authenticated'] = true;
+        }
+
         $this->render('registration_edit', [
-            'pageTitle' => 'Edit Registration',
+            'pageTitle' => 'Edit SecretRoomSubmission',
             'registration' => $registration
         ]);
     }
