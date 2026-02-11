@@ -11,9 +11,17 @@ class Controller
 
     public function __construct()
     {
-        AuthController::checkAuth();
+        self::checkAuth();
         $this->config = Config::instance();
         $this->db = Database::getInstance();
+    }
+
+    public static function checkAuth(): void
+    {
+        if ($_SESSION['user_logged_in'] !== true) {
+            header('Location: index.php?route=login');
+            exit;
+        }
     }
 
     protected function render(string $view, array $data = []): void
