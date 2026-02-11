@@ -99,29 +99,13 @@ class SecretRoomSubmission
         return $stmt->fetchAll();
     }
 
-    public function authenticate(int $id): bool
+    public function authenticate(int $id)
     {
-        // 1. Get the username for this registration
-        $stmt = $this->db->prepare("SELECT username FROM secret_room_submissions WHERE id = :id");
-        $stmt->execute(['id' => $id]);
-        $row = $stmt->fetch();
-
-        if (!$row) {
-            return false; // registration not found
-        }
-
-        $username = $row['username'];
-
-        // 2. Update the registration to authenticated
-        $updateReg = $this->db->prepare("UPDATE secret_room_submissions SET authenticated = true WHERE id = :id");
-        $successReg = $updateReg->execute(['id' => $id]);
-
-        // 3. Update the corresponding user to authenticated
-        $updateUser = $this->db->prepare("UPDATE users SET authenticated = true WHERE username = :username");
-        $successUser = $updateUser->execute(['username' => $username]);
-
-        // 4. Return true if both succeeded
-        return $successReg && $successUser;
+        // 1. Activate the submission
+        $stmt = $this->db->prepare("SELECT * FROM secret_room_submission_authenticate(:submission_id)");
+        $stmt->bindValue(':submission_id', $id, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
 
