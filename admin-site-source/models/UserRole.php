@@ -68,7 +68,8 @@ class UserRole
         $hierarchy = [
             self::USER => 1,
             self::ADMIN => 2,
-            self::SUPERADMIN => 3,
+            self::GROUP_ADMIN => 3,
+            self::SUPERADMIN => 4,
         ];
 
         $userLevel = $hierarchy[$highestRole] ?? 0;
