@@ -1,6 +1,15 @@
 <?php
 
+/**
+ * @var array $users
+ * @var array $user
+ * @var array $currentUserRoles
+ * @var string $search
+ *
+ **/
+
 use App\Models\UserRole;
+
 
 ?>
 
@@ -28,7 +37,8 @@ use App\Models\UserRole;
             </tr>
             </thead>
             <tbody>
-            <?php foreach ($users as $user): ?>
+            <?php
+            foreach ($users as $user): ?>
                 <tr>
                     <td><?= htmlspecialchars($user['username']) ?></td>
                     <td>
@@ -128,8 +138,7 @@ use App\Models\UserRole;
     const resetModal = document.getElementById('resetPasswordModal');
     resetModal.addEventListener('show.bs.modal', function (event) {
         const button = event.relatedTarget;
-        const username = button.getAttribute('data-username');
-        document.getElementById('resetUsername').value = username;
+        document.getElementById('resetUsername').value = button.getAttribute('data-username');
         generatePassword(); // Auto-generate on open
     });
 
@@ -154,8 +163,7 @@ use App\Models\UserRole;
 
     function generatePassword() {
         // Generate 8 digit number
-        const num = Math.floor(10000000 + Math.random() * 90000000);
-        document.getElementById('newPassword').value = num;
+        document.getElementById('newPassword').value = Math.floor(10000000 + Math.random() * 90000000);
     }
 </script>
 
