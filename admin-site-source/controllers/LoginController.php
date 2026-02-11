@@ -33,7 +33,8 @@ class LoginController extends Controller
         if ($user && password_verify($pass, $user['password'])) {
 
             if (!$user['authenticated']) {
-                $this->redirect('index.php?route=login&error=2');
+                $_SESSION['error'] = 2;
+                $this->redirect($_SERVER['REQUEST_URI']);
             }
 
 
@@ -42,10 +43,11 @@ class LoginController extends Controller
             $_SESSION['roles'] = UserRole::getUserRoles($user['username']);;
 
 
-            $this->redirect('index.php');
+            $this->redirect($_SERVER['REQUEST_URI']);
         }
 
-        $this->redirect('index.php?route=login&error=1');
+        $_SESSION['error'] = 1;
+        $this->redirect('index.php?route=login');
     }
 
     public function logout()
