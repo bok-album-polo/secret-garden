@@ -3,7 +3,7 @@
 namespace App\Controllers;
 
 use App\Models\User;
-use models\UserRole;
+use App\Models\UserRole;
 
 class AuthController extends Controller
 {
