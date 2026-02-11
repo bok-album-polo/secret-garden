@@ -30,7 +30,7 @@ $userRoles = $_SESSION['roles'] ?? [UserRole::USER];
 
         <div class="collapse navbar-collapse" id="mainNav">
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                <?php if (UserRole::hasPermission($userRoles, UserRole::GROUP_ADMIN)): ?>
+                <?php if (UserRole::hasPermission($userRoles, UserRole::ADMIN)): ?>
                     <li class="nav-item">
                         <a class="nav-link" href="index.php?route=dashboard">
                             <i class="bi bi-clipboard-data"></i> Registrations

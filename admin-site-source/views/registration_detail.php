@@ -5,7 +5,7 @@ use App\Models\UserRole;
 $userRoles = $_SESSION['roles'] ?? [UserRole::USER];
 
 
-if (!UserRole::hasPermission($userRoles, UserRole::GROUP_ADMIN)) {
+if (!UserRole::hasPermission($userRoles, UserRole::ADMIN)) {
     exit;
 }
 ?>
