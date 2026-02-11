@@ -3,7 +3,7 @@
         <div class="card-body">
             <h1 class="h4 mb-4 text-center">Welcome Back</h1>
 
-            <?php if (isset($_GET['error'])): ?>
+            <?php if (isset($_SESSION['error'])): ?>
                 <div class="alert alert-danger alert-dismissible fade show" role="alert">
                     <?php
                     $errorMessages = [
@@ -11,13 +11,13 @@
                             '2' => 'Your account has not been authenticated yet.',
                             '3' => 'Session expired. Please login again.'
                     ];
-                    echo htmlspecialchars($errorMessages[$_GET['error']] ?? 'An error occurred. Please try again.', ENT_QUOTES, 'UTF-8');
+                    echo htmlspecialchars($errorMessages[$_SESSION['error']] ?? 'An error occurred. Please try again.', ENT_QUOTES, 'UTF-8');
                     ?>
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
             <?php endif; ?>
 
-            <?php if (isset($_GET['success'])): ?>
+            <?php if (isset($_SESSION['success'])): ?>
                 <div class="alert alert-success alert-dismissible fade show" role="alert">
                     Registration successful! Please login.
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
