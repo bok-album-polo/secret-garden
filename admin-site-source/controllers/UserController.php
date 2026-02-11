@@ -2,8 +2,8 @@
 
 namespace App\Controllers;
 
-use App\Core\UserRole;
 use App\Models\User;
+use models\UserRole;
 
 class UserController extends Controller
 {

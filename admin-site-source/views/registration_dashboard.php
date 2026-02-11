@@ -1,6 +1,6 @@
 <?php
 
-use App\Core\UserRole;
+use App\Models\UserRole;
 
 /**
  * @var array $registrations
@@ -23,7 +23,7 @@ $userRoles = $_SESSION['roles'] ?? [UserRole::USER];
         }
         ?>
 
-        <p>This is your dashboard. Below are the latest registrations:</p>
+        <p>This is your dashboard. Below are the latest submissions:</p>
 
         <!-- Search / filter form -->
         <form class="row g-3 mb-3" method="get" action="index.php">
@@ -114,7 +114,7 @@ $userRoles = $_SESSION['roles'] ?? [UserRole::USER];
                     <thead class="table-dark">
                     <tr>
                         <th><?= sortLink('Username', 'username', $sortColumn, $sortDir, $filters) ?></th>
-                        <th><?= sortLink('Email', 'email', $sortColumn, $sortDir, $filters) ?></th>
+                        <th><?= sortLink('Email', 'primary_email', $sortColumn, $sortDir, $filters) ?></th>
                         <th><?= sortLink('Domain', 'domain', $sortColumn, $sortDir, $filters) ?></th>
                         <th><?= sortLink('PK Sequence', 'pk_sequence', $sortColumn, $sortDir, $filters) ?></th>
                         <th><?= sortLink('Authenticated', 'authenticated', $sortColumn, $sortDir, $filters) ?></th>
