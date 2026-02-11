@@ -1,6 +1,5 @@
 <?php
 
-use App\Models\UserRole;
 
 /**
  * @var array $registrations
@@ -10,6 +9,10 @@ use App\Models\UserRole;
  */
 
 // UserRole check
+
+
+use App\Models\UserRole;
+
 $userRoles = $_SESSION['roles'] ?? [UserRole::USER];
 
 ?>
