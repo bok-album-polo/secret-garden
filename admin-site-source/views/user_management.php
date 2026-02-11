@@ -32,8 +32,10 @@ use App\Models\UserRole;
             <thead class="table-dark">
             <tr>
                 <th>Username</th>
+                <th>Authenticated</th>
+                <th>Activated At</th>
                 <th>Roles</th>
-                <th>Actions</th>
+                <th style="width: 25%;">Actions</th>
             </tr>
             </thead>
             <tbody>
@@ -41,6 +43,17 @@ use App\Models\UserRole;
             foreach ($users as $user): ?>
                 <tr>
                     <td><?= htmlspecialchars($user['username']) ?></td>
+                    <td><?= $user['authenticated'] ? 'Yes' : 'No' ?></td>
+                    <td class="utc-date" data-utc="<?= htmlspecialchars($user['activated_at'] ?? '') ?>">
+                        <?php if (!empty($user['activated_at'])): ?>
+                            <?php
+                            $dt = new DateTime($user['activated_at'], new DateTimeZone('UTC'));
+                            echo $dt->format('Y-m-d H:i') . ' UTC';
+                            ?>
+                        <?php else: ?>
+                            —
+                        <?php endif; ?>
+                    </td>
                     <td>
                         <?php foreach ($user['roles'] as $role): ?>
                             <span class="badge bg-secondary"><?= htmlspecialchars($role) ?></span>
@@ -56,7 +69,12 @@ use App\Models\UserRole;
 
                         <!-- Manage Roles (Superadmin only) -->
                         <?php if (UserRole::hasPermission($currentUserRoles, UserRole::SUPERADMIN)): ?>
-                            <button class="btn btn-sm btn-info" data-bs-toggle="modal"
+                            <form method="post" action="index.php?route=activate_user" style="display:inline;">
+                                <input type="hidden" name="username" value="<?= $user['username'] ?>">
+                                <button class="btn btn-sm btn-info">Activate</button>
+                            </form>
+
+                            <button class="btn btn-sm btn-primary" data-bs-toggle="modal"
                                     data-bs-target="#manageRolesModal"
                                     data-username="<?= htmlspecialchars($user['username']) ?>"
                                     data-roles='<?= json_encode($user['roles']) ?>'>
