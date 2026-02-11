@@ -2,11 +2,11 @@
 
 namespace App\Models;
 
-use App\Core\Database;
+use App\Controllers\Database;
 
 class User
 {
-    private $db;
+    private \PDO $db;
 
     public function __construct()
     {
@@ -30,14 +30,14 @@ class User
     {
         $sql = "SELECT * FROM users";
         $params = [];
-        
+
         if ($search) {
             $sql .= " WHERE username ILIKE :search OR domain ILIKE :search";
             $params['search'] = '%' . $search . '%';
         }
-        
+
         $sql .= " ORDER BY username ASC";
-        
+
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
         return $stmt->fetchAll();
