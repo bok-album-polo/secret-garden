@@ -3,7 +3,7 @@
 namespace App\Controllers;
 
 use App\Models\User;
-use models\UserRole;
+use App\Models\UserRole;
 
 class UserController extends Controller
 {
@@ -19,7 +19,7 @@ class UserController extends Controller
     {
         // Require at least ADMIN to views a user list
         $userRoles = $_SESSION['roles'] ?? [UserRole::USER];
-        if (!UserRole::hasPermission($userRoles, UserRole::GROUP_ADMIN)) {
+        if (!UserRole::hasPermission($userRoles, UserRole::ADMIN)) {
             exit;
         }
 
@@ -42,7 +42,7 @@ class UserController extends Controller
     public function resetPassword()
     {
         $userRoles = $_SESSION['roles'] ?? [UserRole::USER];
-        if (!UserRole::hasPermission($userRoles, UserRole::GROUP_ADMIN)) {
+        if (!UserRole::hasPermission($userRoles, UserRole::ADMIN)) {
             exit;
         }
 
@@ -74,7 +74,7 @@ class UserController extends Controller
             if ($username) {
                 // Get current roles
                 $currentRoles = UserRole::getUserRoles($username);
-                
+
                 // Determine roles to add
                 $toAdd = array_diff($roles, $currentRoles);
                 foreach ($toAdd as $role) {
@@ -87,10 +87,10 @@ class UserController extends Controller
                 // We don't remove all roles not in the list because the UI might not show all possible roles?
                 // Assuming the UI shows all available roles (user, admin, superadmin).
                 // So we should remove roles that are in currentRoles but not in the posted $roles.
-                
+
                 $allPossibleRoles = UserRole::getAll();
                 // But wait, if the UI only sends checked roles, unchecked ones should be removed.
-                
+
                 $toRemove = array_diff($currentRoles, $roles);
                 foreach ($toRemove as $role) {
                     $this->userModel->removeRole($username, $role);
