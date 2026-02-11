@@ -6,9 +6,14 @@ use App\Models\User;
 
 class Controller
 {
+    protected Config $config;
+    protected \PDO $db;
+
     public function __construct()
     {
         AuthController::checkAuth();
+        $this->config = Config::instance();
+        $this->db = Database::getInstance();
     }
 
     protected function render(string $view, array $data = []): void
@@ -42,21 +47,23 @@ class Controller
     }
 
 
-    protected function renderOld($view, $data = [])
-    {
-        extract($data);
-
-        $viewFile = __DIR__ . "/../views/{$view}.php";
-        if (file_exists($viewFile)) {
-            require __DIR__ . "/../views/layout/template.php";
-        } else {
-            die("View {$view} not found.");
-        }
-    }
-
     protected function redirect($url)
     {
         header("Location: {$url}");
         exit;
+    }
+
+    protected function validateCsrf(): bool
+    {
+        $token = $_POST['csrf_token'] ?? '';
+        return !empty($token) && hash_equals($_SESSION['csrf_token'] ?? '', $token);
+    }
+
+    private static function getCsrfToken(): string
+    {
+        if (empty($_SESSION['csrf_token'])) {
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        }
+        return $_SESSION['csrf_token'];
     }
 }
