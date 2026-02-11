@@ -31,7 +31,7 @@ if (!UserRole::hasPermission($userRoles, UserRole::ADMIN)) {
 
                 <div class="mb-3">
                     <label for="email" class="form-label">Email</label>
-                    <input type="email" class="form-control" id="email" name="email" value="<?= htmlspecialchars($registration['email']??'') ?>">
+                    <input type="email" class="form-control" id="email" name="email" value="<?= htmlspecialchars($registration['primary_email']??'') ?>">
                 </div>
 
                 <div class="mb-3 form-check">

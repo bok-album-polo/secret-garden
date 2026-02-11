@@ -10,6 +10,7 @@ use App\Controllers\UserController;
 
 $route = $_GET['route'] ?? 'dashboard';
 
+
 // Handle login POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $route === 'login') {
     (new AuthController())->login();
