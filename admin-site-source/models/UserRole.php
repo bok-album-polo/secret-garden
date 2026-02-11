@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Controllers\Database;
 use PDO;
 
 class UserRole
@@ -21,6 +22,11 @@ class UserRole
     }
 
     public static function isValid($role)
+    {
+        return in_array($role, self::getAll());
+    }
+
+    public static function isGroupAdmin($role)
     {
         return in_array($role, self::getAll());
     }
@@ -71,7 +77,7 @@ class UserRole
         return $userLevel >= $requiredLevel;
     }
 
-    public static function getUserRoles($username)
+    public static function getUserRoles($username): array
     {
         $db = Database::getInstance();
         $stmt = $db->prepare("SELECT role FROM user_roles WHERE username = :username");
