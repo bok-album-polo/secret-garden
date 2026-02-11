@@ -22,7 +22,7 @@
                 <div class="alert alert-success alert-dismissible fade show" role="alert">
                     Registration successful! Please login.
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
+                </div><?php unset($_SESSION['success']); ?>
             <?php endif; ?>
 
             <form method="post" action="index.php?route=login" novalidate>
