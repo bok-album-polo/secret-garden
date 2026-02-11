@@ -18,7 +18,7 @@ class Controller
 
     public static function checkAuth(): void
     {
-        if ($_SESSION['user_logged_in'] !== true) {
+        if (!Session::isLoggedIn()) {
             header('Location: index.php?route=login');
             exit;
         }
