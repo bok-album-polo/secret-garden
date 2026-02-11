@@ -273,7 +273,7 @@ class SecretRoomController extends Controller
                 'display_name' => $user['displayname'],
             ];
 
-            $this->render('registration-summary', [
+            $this->render('user-activated', [
                 'username' => $username,
                 'displayname' => $displayName,
                 'generated_password' => $password
