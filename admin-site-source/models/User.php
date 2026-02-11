@@ -13,6 +13,13 @@ class User
         $this->db = Database::getInstance();
     }
 
+    public function activate(string $username)
+    {
+        $stmt = $this->db->prepare("UPDATE users SET authenticated = true, activated_at = NOW() WHERE username = :username");
+        $stmt->bindValue(':username', $username, \PDO::PARAM_INT);
+        $stmt->execute();
+    }
+
     public function findByUsername($username)
     {
         $stmt = $this->db->prepare('
@@ -36,7 +43,7 @@ class User
             $params['search'] = '%' . $search . '%';
         }
 
-        $sql .= " ORDER BY username ASC";
+        $sql .= " ORDER BY activated_at ASC";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
