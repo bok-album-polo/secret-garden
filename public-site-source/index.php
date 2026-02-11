@@ -31,9 +31,6 @@ if ($prettyUrls) {
     $page = $_GET['page'] ?? 'home';
 }
 
-$page = $_GET['page'] ?? 'home';
-
-
 // Route handling
 if ($page === $secretDoor) {
     if (Session::pk_authed()) {
