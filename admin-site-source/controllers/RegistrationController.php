@@ -3,10 +3,11 @@
 namespace App\Controllers;
 
 use App\Models\SecretRoomSubmission;
+use App\Models\UserRole;
 
 class RegistrationController extends Controller
 {
-    private $registrationModel;
+    private SecretRoomSubmission $registrationModel;
 
     public function __construct()
     {
@@ -84,10 +85,15 @@ class RegistrationController extends Controller
             ];
 
             $adminUsername = $_SESSION['username'];
-            
+
             if ($this->registrationModel->createNewVersion($newData, $adminUsername)) {
                 $this->redirect('index.php?route=dashboard');
             }
+        }
+
+
+        if (UserRole::hasPermission($_SESSION['roles'], UserRole::GROUP_ADMIN)) {
+            $registration['authenticated'] = true;
         }
 
         $this->render('registration_edit', [
