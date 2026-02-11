@@ -21,6 +21,11 @@ class Session
         }
     }
 
+    public static function isLoggedIn(): bool
+    {
+        return $_SESSION['user_logged_in'] ?? false;
+    }
+
     public static function logout(): void
     {
         session_destroy();
