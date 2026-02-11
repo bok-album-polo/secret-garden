@@ -100,4 +100,11 @@ class UserController extends Controller
 
         $this->redirect('index.php?route=user_management');
     }
+
+    public function activateUser()
+    {
+        $username = $_POST['username'] ?? '';
+        $this->userModel->activate($username);
+        $this->redirect('index.php?route=user_management');
+    }
 }
