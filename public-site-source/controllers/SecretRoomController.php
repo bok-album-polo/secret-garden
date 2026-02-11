@@ -27,8 +27,16 @@ class SecretRoomController extends Controller
 
             // For all other modes, or if logged in in writeonly mode
             $fields = $this->config->secret_room_fields;
+            $sql = "select * from secret_room_submission_get(:username)";
+            $statement = $this->db->prepare($sql);
+            $statement->bindValue(':username', $_SESSION['username']);
+            $statement->execute();
+            $submission = $statement->fetch(PDO::FETCH_ASSOC);
+
             $this->render("$secretRoom", [
                 'fields' => $fields,
+                'submission' => $submission,
+                'form_readonly' => false,
             ]);
         }
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -202,7 +210,7 @@ class SecretRoomController extends Controller
         ];
 
         if (\App\Controllers\Controller::isGroupAdmin($_SESSION['username'])) {
-        // Add authenticated if user is group admin
+            // Add authenticated if user is group admin
             $fields[] = ['name' => 'authenticated'];
             $data['authenticated'] = true;
         }
