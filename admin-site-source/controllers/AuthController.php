@@ -11,12 +11,13 @@ class AuthController extends Controller
 
     public function __construct()
     {
+        parent::__construct();
         $this->userModel = new User();
     }
 
     public function showLogin()
     {
-        if ($_SESSION['user_logged_in'] ?? false) {
+        if (Session::isLoggedIn()) {
             $this->redirect('index.php');
         }
         $this->render('login', ['pageTitle' => 'Login']);

@@ -11,7 +11,7 @@ class RegistrationController extends Controller
 
     public function __construct()
     {
-        AuthController::checkAuth();
+        parent::__construct();
         $this->registrationModel = new SecretRoomSubmission();
     }
 
