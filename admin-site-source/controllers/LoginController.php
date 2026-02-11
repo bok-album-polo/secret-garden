@@ -53,12 +53,4 @@ class LoginController extends Controller
         Session::logout();
         $this->redirect('index.php?route=login');
     }
-
-    public static function checkAuth()
-    {
-        if ($_SESSION['user_logged_in'] !== true) {
-            header('Location: index.php?route=login');
-            exit;
-        }
-    }
 }
