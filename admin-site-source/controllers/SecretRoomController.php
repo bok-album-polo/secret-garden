@@ -5,7 +5,7 @@ namespace App\Controllers;
 use App\Models\SecretRoomSubmission;
 use App\Models\UserRole;
 
-class RegistrationController extends Controller
+class SecretRoomController extends Controller
 {
     private SecretRoomSubmission $registrationModel;
 
