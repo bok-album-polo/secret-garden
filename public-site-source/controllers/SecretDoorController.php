@@ -24,68 +24,40 @@ class SecretDoorController extends Controller
         ]);
     }
 
-    private function handleSecretDoor(): void {
-        // ----------------------------
-        // Honeypot check - ban IP
-        // ----------------------------
+    private function handleSecretDoor(): void
+    {
         Session::banIp('Secret Door Triggered');
 
-        // ----------------------------
-        // Basic validation
-        // ----------------------------
-        $name    = trim($_POST['name'] ?? '');
-        $email   = trim($_POST['email'] ?? '');
+        $name = trim($_POST['name'] ?? '');
+        $email = trim($_POST['email'] ?? '');
         $message = trim($_POST['message'] ?? '');
 
-        // ----------------------------
-        // Persist submission
-        // ----------------------------
-        $fields        = $this->config->secret_door_fields;
+        $fields = $this->config->secret_door_fields;
         $user_agent_id = Session::getUserAgentId($_SERVER['HTTP_USER_AGENT']);
 
-        // Base data
         $baseData = [
-            'message'       => $message,
-            'email'         => $email,
+            'message' => $message,
+            'email' => $email,
             'user_agent_id' => $user_agent_id,
-            'ip_address'    => $_SERVER['REMOTE_ADDR'],
+            'ip_address' => $_SERVER['REMOTE_ADDR'],
         ];
 
-        // ----------------------------
-        // Collect file uploads
-        // ----------------------------
-        $fileData = [];
-        foreach ($fields as $field) {
-            if ($field['html_type'] === 'file') {
-                $uploaded_file = $this->handleFileUploadToDb($field['name']);
-                $fileData[$field['name'] . "_filename"] = $uploaded_file['filename'];
-                $fileData[$field['name'] . "_data"]     = $uploaded_file['data'];
-            }
-        }
+        // Reusable file upload handler
+        $uploads = $this->processFileUploads($fields);
 
         // Merge base + file data
-        $data = array_merge($baseData, $fileData);
+        $data = array_merge($baseData, $uploads['data']);
 
-        // ----------------------------
-        // Merge additional fields
-        // ----------------------------
-        $extraFields = [
-            ['name' => 'ip_address'],
-            ['name' => 'user_agent_id'],
-        ];
+        // Merge extra fields
+        $fields = array_merge(
+            $fields,
+            [
+                ['name' => 'ip_address'],
+                ['name' => 'user_agent_id']
+            ],
+            $uploads['fields']
+        );
 
-        foreach ($fields as $field) {
-            if ($field['html_type'] === 'file') {
-                $extraFields[] = ['name' => $field['name'] . "_filename"];
-                $extraFields[] = ['name' => $field['name'] . "_data"];
-            }
-        }
-
-        $fields = array_merge($fields, $extraFields);
-
-        // ----------------------------
-        // Record submission
-        // ----------------------------
         $this->recordSubmission(fields: $fields, data: $data);
     }
 }
