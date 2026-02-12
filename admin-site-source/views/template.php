@@ -37,7 +37,7 @@ $userRoles = $_SESSION['roles'] ?? [UserRole::USER];
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="index.php?route=user_management">
+                        <a class="nav-link" href="index.php?route=users-management">
                             <i class="bi bi-people"></i> User Management
                         </a>
                     </li>
