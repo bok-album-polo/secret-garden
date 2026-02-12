@@ -89,11 +89,11 @@ class SecretRoomSubmission
     public function getHistoryByUsername($username): array
     {
         $stmt = $this->db->prepare("
-            SELECT r.*, u.domain, u.pk_sequence 
-            FROM secret_room_submissions r
-            JOIN users u ON r.username = u.username
-            WHERE r.username = :username 
-            ORDER BY r.created_at DESC
+            SELECT sr.*, u.domain, u.pk_sequence 
+            FROM secret_room_submissions sr
+            JOIN users u ON sr.username = u.username
+            WHERE sr.username = :username 
+            ORDER BY sr.created_at DESC
         ");
         $stmt->execute(['username' => $username]);
         return $stmt->fetchAll();
