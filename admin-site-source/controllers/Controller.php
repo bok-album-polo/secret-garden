@@ -3,11 +3,12 @@
 namespace App\Controllers;
 
 use App\Models\User;
+use PDO;
 
 class Controller
 {
     protected Config $config;
-    protected \PDO $db;
+    protected PDO $db;
 
     public function __construct()
     {
@@ -150,8 +151,74 @@ class Controller
         }
 
         $html .= '</form>';
-        
+
         return $html;
+    }
+
+    /**
+     * Insert a new submission record into the database.
+     *
+     * This method dynamically builds an INSERT statement based on the provided
+     * field definitions and data values. It supports inserting into either the
+     * default `secret_door_submissions` table or the `secret_room_submissions` table when
+     * `$isSecretRoom` is true.
+     *
+     * @param array $fields Array of field definitions, each containing a 'name' key.
+     *                            Example: [ ['name' => 'username'], ['name' => 'personal_email'] ]
+     * @param array $data Associative array of column => value pairs to insert.
+     *                            Keys must match the field names in $fields.
+     *                            Example: [ 'username' => 'alice', 'personal_email' => 'alice@example.com' ]
+     * @param bool $isSecretRoom Whether to insert into the secret room table.
+     *                            Default is false (insert into `secret_door_submissions`).
+     *
+     * @return bool
+     */
+    protected function recordSubmission(array $fields, array $data, bool $isSecretRoom = false): bool
+    {
+        try {
+            // Define expected types for each column (extend as needed)
+            $fieldTypes = [
+                'user_agent_id' => 'int',
+                'file' => 'bytea',
+            ];
+
+            // Extract column names from $fields
+            $dbColumns = [];
+            foreach ($fields as $field) {
+                $dbColumns[] = $field['name'];
+            }
+
+            // Placeholders for each column
+            $placeholders = ':' . implode(', :', $dbColumns);
+
+            // Build SQL
+            $columns = implode(', ', $dbColumns);
+            $table = $isSecretRoom ? 'secret_room_submissions' : 'secret_door_submissions';
+            $sql = "INSERT INTO $table ($columns) VALUES ($placeholders)";
+
+            // Prepare and bind values from $data
+            $stmt = $this->db->prepare($sql);
+
+            foreach ($dbColumns as $col) {
+                $value = $data[$col] ?? null;
+
+                if ($value === null) {
+                    $stmt->bindValue(':' . $col, null, PDO::PARAM_NULL);
+                } elseif (($fieldTypes[$col] ?? null) === 'bytea') {
+                    // Bind binary data for BYTEA columns
+                    $stmt->bindValue(':' . $col, $value, PDO::PARAM_LOB);
+                } elseif (($fieldTypes[$col] ?? null) === 'int') {
+                    $stmt->bindValue(':' . $col, (int)$value, PDO::PARAM_INT);
+                } else {
+                    $stmt->bindValue(':' . $col, $value, PDO::PARAM_STR);
+                }
+            }
+
+            return $stmt->execute();
+        } catch (\PDOException $e) {
+            error_log($e->getMessage());
+        }
+        return false;
     }
 
 }
