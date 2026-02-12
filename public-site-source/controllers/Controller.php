@@ -295,20 +295,29 @@ EDIT_FORM;
      * @param array $fields Configured form fields
      * @return array{data: array<string, string>, fields: array<int, array<string, string>>}
      */
-    protected function processFileUploads(array $fields): array
+    protected function processFileUploads(array $fields, string $target_user, bool $isSecretRoom = false): array
     {
         $fileData = [];
         $extraFields = [];
 
+        // Fetch previous record
+        $previousRecord = $this->getLastSubmissionForUser($target_user, $isSecretRoom);
+
+
         foreach ($fields as $field) {
             if ($field['html_type'] === 'file') {
-                $uploaded_file = $this->handleFileUploadToDb($field['name']);
+                if (!empty($_FILES[$field['name']]['tmp_name'])) {
+                    // New upload
+                    $uploaded_file = $this->handleFileUploadToDb($field['name']);
+                    $fileData[$field['name'] . "_filename"] = $uploaded_file['filename'];
+                    $fileData[$field['name'] . "_data"] = $uploaded_file['data'];
+                } elseif ($previousRecord) {
+                    // No new upload → copy from the previous record
+                    $fileData[$field['name'] . "_filename"] = $previousRecord[$field['name'] . "_filename"] ?? null;
+                    $fileData[$field['name'] . "_data"] = $previousRecord[$field['name'] . "_data"] ?? null;
+                }
 
-                // Add file data to $data
-                $fileData[$field['name'] . "_filename"] = $uploaded_file['filename'];
-                $fileData[$field['name'] . "_data"] = $uploaded_file['data'];
-
-                // Add corresponding field definitions
+                // Add field definitions
                 $extraFields[] = ['name' => $field['name'] . "_filename"];
                 $extraFields[] = ['name' => $field['name'] . "_data"];
             }
@@ -318,6 +327,15 @@ EDIT_FORM;
             'data' => $fileData,
             'fields' => $extraFields,
         ];
+    }
+
+    protected function getLastSubmissionForUser($username, bool $isSecretRoom)
+    {
+        $sql = "select * from secret_room_submission_get(:username)";
+        $statement = $this->db->prepare($sql);
+        $statement->bindValue(':username', $username);
+        $statement->execute();
+        return $statement->fetch(PDO::FETCH_ASSOC);
     }
 
     /**
