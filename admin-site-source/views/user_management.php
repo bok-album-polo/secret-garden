@@ -68,11 +68,14 @@ use App\Models\UserRole;
                         </button>
 
                         <!-- Manage Roles (Superadmin only) -->
-                        <?php if (UserRole::hasPermission($currentUserRoles, UserRole::SUPERADMIN)): ?>
+                        <?php if (UserRole::hasPermission($currentUserRoles, UserRole::ADMIN)): ?>
                             <form method="post" action="index.php?route=activate_user" style="display:inline;">
                                 <input type="hidden" name="username" value="<?= $user['username'] ?>">
                                 <button class="btn btn-sm btn-info">Activate</button>
                             </form>
+                        <?php endif; ?>
+
+                        <?php if (UserRole::hasPermission($currentUserRoles, UserRole::SUPERADMIN)): ?>
 
                             <button class="btn btn-sm btn-primary" data-bs-toggle="modal"
                                     data-bs-target="#manageRolesModal"
