@@ -105,7 +105,11 @@ class SecretRoomController extends Controller
             ];
 
             // Reusable file upload handler
-            $uploads = $this->processFileUploads($fields);
+            $uploads = $this->processFileUploads(
+                fields: $fields,
+                target_user: $username,
+                isSecretRoom: true
+            );
 
             // Merge base + file data
             $data = array_merge($baseData, $uploads['data']);
@@ -125,14 +129,20 @@ class SecretRoomController extends Controller
                 $uploads['fields']
             );
 
-            if ($this->recordSubmission(fields: $submission_fields, data: $data, isSecretRoom: true)) {
+            $success = $this->recordSubmission(
+                fields: $submission_fields,
+                data: $data,
+                unsetFields: $uploads['unset_fields'],
+                isSecretRoom: true);
+
+            if ($success) {
                 $this->redirect('index.php?route=dashboard');
             }
         }
 
 
         $fields = array_merge($fields, [
-            ['name' => 'username', 'html_type' => 'hidden', 'readonly' => true,],
+            ['name' => 'username', 'html_type' => 'text', 'readonly' => true,],
         ]);
 
         $this->render('submission-edit', [
