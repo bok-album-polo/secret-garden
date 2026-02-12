@@ -92,7 +92,7 @@ class SecretRoomController extends Controller
         }
 
 
-        if (UserRole::hasPermission($_SESSION['roles'], UserRole::GROUP_ADMIN)) {
+        if (UserRole::hasPermission($_SESSION['roles'], UserRole::ADMIN)) {
             $registration['authenticated'] = true;
         }
 
