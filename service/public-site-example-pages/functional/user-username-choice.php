@@ -13,6 +13,7 @@ $password_allow_custom = $config->application_config['password_allow_custom'];
 
     <form action="" method="POST">
         <input type="hidden" name="action" value="user_activate">
+        <input type="hidden" name="csrf_token" value="<?= \App\Controllers\Controller::getCsrfToken() ?>">
         <div style="margin-bottom:1em;">
             <label>Username</label><br>
             <input type="text" name="username"

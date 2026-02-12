@@ -59,10 +59,19 @@ class Controller
     protected function validateCsrf(): bool
     {
         $token = $_POST['csrf_token'] ?? '';
-        return !empty($token) && hash_equals($_SESSION['csrf_token'] ?? '', $token);
+        if (!isset($_SESSION['csrf_token'])) {
+            return false;
+        }
+
+        $isValid = hash_equals($_SESSION['csrf_token'], $token);
+
+        // Always remove token after validation attempt
+        unset($_SESSION['csrf_token']);
+
+        return $isValid;
     }
 
-    private static function getCsrfToken(): string
+    public static function getCsrfToken(): string
     {
         if (empty($_SESSION['csrf_token'])) {
             $_SESSION['csrf_token'] = bin2hex(random_bytes(32));

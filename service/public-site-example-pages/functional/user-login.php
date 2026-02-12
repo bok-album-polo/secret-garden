@@ -1,10 +1,11 @@
 <section>
     <h2><?= /** @var string $title */
-        htmlspecialchars($title) ?></h2>
+        htmlspecialchars($title ?? 'User login') ?></h2>
     <p><strong>Authorized Access Only</strong></p>
     <!-- Login Block -->
     <form action="" method="POST">
         <input type="hidden" name="action" value="login">
+        <input type="hidden" name="csrf_token" value="<?= \App\Controllers\Controller::getCsrfToken() ?>">
         <div>
             <label>Username</label><br>
             <input type="text" name="username" required><br>
