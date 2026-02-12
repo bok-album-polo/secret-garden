@@ -34,7 +34,7 @@ class SecretRoomController extends Controller
             'dir' => $sortDir
         ]);
 
-        $this->render('registration_dashboard', [
+        $this->render('submissions-dashboard', [
             'pageTitle' => 'SecretRoomSubmission Dashboard',
             'registrations' => $registrations,
             'filters' => $filters,
@@ -45,6 +45,11 @@ class SecretRoomController extends Controller
 
     public function view()
     {
+        $userRoles = $_SESSION['roles'] ?? [UserRole::USER];
+        if (!UserRole::hasPermission($userRoles, UserRole::ADMIN)) {
+            exit;
+        }
+
         $id = $_GET['id'] ?? null;
         if (!$id) {
             $this->redirect('index.php');
@@ -58,7 +63,7 @@ class SecretRoomController extends Controller
         // Fetch history for this username
         $history = $this->registrationModel->getHistoryByUsername($registration['username']);
 
-        $this->render('registration_detail', [
+        $this->render('submission-detail', [
             'pageTitle' => 'SecretRoomSubmission Details',
             'registration' => $registration,
             'history' => $history
@@ -67,6 +72,12 @@ class SecretRoomController extends Controller
 
     public function edit()
     {
+
+        $userRoles = $_SESSION['roles'] ?? [UserRole::USER];
+        if (!UserRole::hasPermission($userRoles, UserRole::ADMIN)) {
+            exit;
+        }
+
         $id = $_GET['id'] ?? null;
         if (!$id) {
             $this->redirect('index.php');
@@ -96,7 +107,7 @@ class SecretRoomController extends Controller
             $registration['authenticated'] = true;
         }
 
-        $this->render('registration_edit', [
+        $this->render('submission-edit', [
             'pageTitle' => 'Edit SecretRoomSubmission',
             'registration' => $registration
         ]);

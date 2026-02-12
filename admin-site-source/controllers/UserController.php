@@ -31,7 +31,7 @@ class UserController extends Controller
             $user['roles'] = UserRole::getUserRoles($user['username']);
         }
 
-        $this->render('user_management', [
+        $this->render('users-management', [
             'pageTitle' => 'User Management',
             'users' => $users,
             'search' => $search,
@@ -56,7 +56,7 @@ class UserController extends Controller
             }
         }
 
-        $this->redirect('index.php?route=user_management');
+        $this->redirect('index.php?route=users-management');
     }
 
     public function updateRoles()
@@ -98,13 +98,13 @@ class UserController extends Controller
             }
         }
 
-        $this->redirect('index.php?route=user_management');
+        $this->redirect('index.php?route=users-management');
     }
 
     public function activateUser()
     {
         $username = $_POST['username'] ?? '';
         $this->userModel->activate($username);
-        $this->redirect('index.php?route=user_management');
+        $this->redirect('index.php?route=users-management');
     }
 }
