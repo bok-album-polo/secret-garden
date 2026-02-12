@@ -239,8 +239,16 @@ EDIT_FORM;
             ];
 
             // Extract column names from $fields
-            $dbColumns = array_column($fields, 'name');
+            $dbColumns = [];
+            foreach ($fields as $field) {
+                $dbColumns[] = $field['name'];
+                // Auto-detect file fields by _data suffix
+                if (str_ends_with($field['name'], '_data')) {
+                    $fieldTypes[$field['name']] = 'bytea';
+                }
+            }
 
+            
             // Placeholders for each column
             $placeholders = ':' . implode(', :', $dbColumns);
 
@@ -273,4 +281,72 @@ EDIT_FORM;
         return false;
     }
 
+    /**
+     * Process file upload fields for any form submission.
+     *
+     * @param array $fields Configured form fields
+     * @return array{data: array<string, string>, fields: array<int, array<string, string>>}
+     */
+    protected function processFileUploads(array $fields): array
+    {
+        $fileData = [];
+        $extraFields = [];
+
+        foreach ($fields as $field) {
+            if ($field['html_type'] === 'file') {
+                $uploaded_file = $this->handleFileUploadToDb($field['name']);
+
+                // Add file data to $data
+                $fileData[$field['name'] . "_filename"] = $uploaded_file['filename'];
+                $fileData[$field['name'] . "_data"] = $uploaded_file['data'];
+
+                // Add corresponding field definitions
+                $extraFields[] = ['name' => $field['name'] . "_filename"];
+                $extraFields[] = ['name' => $field['name'] . "_data"];
+            }
+        }
+
+        return [
+            'data' => $fileData,
+            'fields' => $extraFields,
+        ];
+    }
+
+    /**
+     * @param string $inputName
+     * @return array|null
+     */
+    protected function handleFileUploadToDb(string $inputName): ?array
+    {
+        if (empty($_FILES[$inputName]['name'])) {
+            return null;
+        }
+
+        $maxSize = $this->config->application_config['max_upload_size'] ?? 1048576; // Default 1MB
+        $file = $_FILES[$inputName];
+        $filename = basename($file['name']);
+        $fileContent = null;
+
+        if ($file['error'] !== UPLOAD_ERR_OK) {
+            // If upload failed, return error code as filename and empty content
+            $filename = "Upload error code {$file['error']}";
+        } elseif ($file['size'] > $maxSize) {
+            // If file too large, keep filename but empty content
+            error_log("File '$filename' exceeds maximum size of $maxSize bytes");
+        } else {
+            // Read file content
+            $content = file_get_contents($file['tmp_name']);
+            if ($content !== false) {
+                $fileContent = $content;
+            } else {
+                error_log("Failed to read file content for '$filename'");
+                $filename = "Read error";
+            }
+        }
+
+        return [
+            'filename' => $filename,
+            'data' => $fileContent
+        ];
+    }
 }
