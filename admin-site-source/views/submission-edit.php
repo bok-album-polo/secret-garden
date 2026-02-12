@@ -13,7 +13,7 @@ if (!UserRole::hasPermission($userRoles, UserRole::ADMIN)) {
 <div class="container mt-5">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1>Edit Registration</h1>
-        <a href="index.php?route=view_registration&id=<?= $registration['id'] ?>" class="btn btn-secondary">Cancel</a>
+        <a href="index.php?route=submission-view&id=<?= $registration['id'] ?>" class="btn btn-secondary">Cancel</a>
     </div>
 
     <div class="card">
@@ -21,7 +21,7 @@ if (!UserRole::hasPermission($userRoles, UserRole::ADMIN)) {
             Editing Registration for <?= htmlspecialchars($registration['username']) ?>
         </div>
         <div class="card-body">
-            <form method="post" action="index.php?route=edit_registration&id=<?= $registration['id'] ?>">
+            <form method="post" action="index.php?route=submission-edit&id=<?= $registration['id'] ?>">
                 
                 <div class="mb-3">
                     <label class="form-label">Username</label>

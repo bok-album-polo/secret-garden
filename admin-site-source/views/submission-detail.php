@@ -14,7 +14,7 @@ if (!UserRole::hasPermission($userRoles, UserRole::ADMIN)) {
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1>Registration Details</h1>
         <div>
-            <a href="index.php?route=edit_registration&id=<?= $registration['id'] ?>"
+            <a href="index.php?route=submission-edit&id=<?= $registration['id'] ?>"
                class="btn btn-warning me-2">Edit</a>
             <a href="index.php?route=dashboard" class="btn btn-secondary">Back to Dashboard</a>
         </div>

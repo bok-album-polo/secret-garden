@@ -17,7 +17,7 @@ use App\Models\UserRole;
     <h1 class="mb-4">User Management</h1>
 
     <form class="row g-3 mb-4" method="get" action="index.php">
-        <input type="hidden" name="route" value="user_management">
+        <input type="hidden" name="route" value="users-management">
         <div class="col-md-4">
             <input type="text" name="search" class="form-control" placeholder="Search username"
                    value="<?= htmlspecialchars($search) ?>">
@@ -69,7 +69,7 @@ use App\Models\UserRole;
 
                         <!-- Manage Roles (Superadmin only) -->
                         <?php if (UserRole::hasPermission($currentUserRoles, UserRole::ADMIN)): ?>
-                            <form method="post" action="index.php?route=activate_user" style="display:inline;">
+                            <form method="post" action="index.php?route=user-activate" style="display:inline;">
                                 <input type="hidden" name="username" value="<?= $user['username'] ?>">
                                 <button class="btn btn-sm btn-info">Activate</button>
                             </form>
@@ -96,7 +96,7 @@ use App\Models\UserRole;
 <div class="modal fade" id="resetPasswordModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form method="post" action="index.php?route=user_reset_password">
+            <form method="post" action="index.php?route=user-reset-password">
                 <div class="modal-header">
                     <h5 class="modal-title">Reset Password</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -127,7 +127,7 @@ use App\Models\UserRole;
 <div class="modal fade" id="manageRolesModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form method="post" action="index.php?route=user_update_roles">
+            <form method="post" action="index.php?route=user-update-roles">
                 <div class="modal-header">
                     <h5 class="modal-title">Manage Roles</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>

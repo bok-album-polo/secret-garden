@@ -151,7 +151,7 @@ $userRoles = $_SESSION['roles'] ?? [UserRole::USER];
                             ?>
                         </td>
                         <td>
-                            <a href="index.php?route=view_registration&id=<?= $row['id'] ?>"
+                            <a href="index.php?route=submission-view&id=<?= $row['id'] ?>"
                                class="btn btn-sm btn-info">View Submission</a>
                             <?php if ($notAuth): ?>
                                 <?php if (UserRole::hasPermission($userRoles, UserRole::ADMIN)): ?>
