@@ -95,7 +95,7 @@ class SecretRoomController extends Controller
             $username = trim($_POST['username'] ?? '');
             $email = trim($_POST['primary_email'] ?? '');
             $userAgentId = UserAgent::getUserAgentId($_SERVER['HTTP_USER_AGENT'] ?? '');
-            $data = [
+            $baseData = [
                 'username' => $username,
                 'created_by' => $_SESSION['username'],
                 'primary_email' => $email,
@@ -104,6 +104,13 @@ class SecretRoomController extends Controller
                 'authenticated' => true,
             ];
 
+            // Reusable file upload handler
+            $uploads = $this->processFileUploads($fields);
+
+            // Merge base + file data
+            $data = array_merge($baseData, $uploads['data']);
+
+
             $extraFields = [
                 ['name' => 'ip_address'],
                 ['name' => 'username'],
@@ -111,7 +118,12 @@ class SecretRoomController extends Controller
                 ['name' => 'authenticated'],
                 ['name' => 'created_by']
             ];
-            $submission_fields = array_merge($fields, $extraFields);
+
+            $submission_fields = array_merge(
+                $fields,
+                $extraFields,
+                $uploads['fields']
+            );
 
             if ($this->recordSubmission(fields: $submission_fields, data: $data, isSecretRoom: true)) {
                 $this->redirect('index.php?route=dashboard');
