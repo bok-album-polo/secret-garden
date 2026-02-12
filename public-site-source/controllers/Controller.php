@@ -63,20 +63,7 @@ class Controller
             return false;
         }
 
-        $isValid = hash_equals($_SESSION['csrf_token'], $token);
-
-        // Always remove token after validation attempt
-        unset($_SESSION['csrf_token']);
-
-        return $isValid;
-    }
-
-    public static function getCsrfToken(): string
-    {
-        if (empty($_SESSION['csrf_token'])) {
-            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-        }
-        return $_SESSION['csrf_token'];
+        return hash_equals($_SESSION['csrf_token'], $token);
     }
 
     public static function getUserRoles($username): array
@@ -120,7 +107,7 @@ class Controller
             $defaults = $stmt->fetch(PDO::FETCH_ASSOC);
         }
 
-        $csrfToken = self::getCsrfToken();
+        $csrfToken = $_SESSION['csrf_token'];
 
         $html = '<form method="POST" enctype="multipart/form-data">';
         $html .= '<input type="hidden" name="csrf_token" value="'

@@ -5,7 +5,7 @@
     <!-- Login Block -->
     <form action="" method="POST">
         <input type="hidden" name="action" value="login">
-        <input type="hidden" name="csrf_token" value="<?= \App\Controllers\Controller::getCsrfToken() ?>">
+        <input type="hidden" name="csrf_token" value="<?=$_SESSION['csrf_token']?>">
         <div>
             <label>Username</label><br>
             <input type="text" name="username" required><br>

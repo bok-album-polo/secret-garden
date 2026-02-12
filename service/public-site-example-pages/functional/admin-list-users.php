@@ -17,7 +17,7 @@
                         <form action="" method="POST" style="display:inline;">
                             <input type="hidden" name="action" value="admin_reset_password">
                             <input type="hidden" name="username" value="<?= $user['username'] ?>">
-                            <input type="hidden" name="csrf_token" value="<?= \App\Controllers\Controller::getCsrfToken() ?>">
+                            <input type="hidden" name="csrf_token" value="<?=$_SESSION['csrf_token']?>">
                             <button type="submit">Reset Password</button>
                         </form>
                     </td>

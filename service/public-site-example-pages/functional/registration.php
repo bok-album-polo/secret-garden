@@ -51,13 +51,13 @@ if ($submission ?? null) {
 
             <form action="" method="POST" style="display:inline;">
                 <input type="hidden" name="action" value="admin_list_group_users">
-                <input type="hidden" name="csrf_token" value="<?= \App\Controllers\Controller::getCsrfToken() ?>">
+                <input type="hidden" name="csrf_token" value="<?=$_SESSION['csrf_token']?>">
                 <button type="submit">List users</button>
             </form>
 
             <form action="" method="POST" style="display:inline;">
                 <input type="hidden" name="action" value="admin_list_submissions">
-                <input type="hidden" name="csrf_token" value="<?= \App\Controllers\Controller::getCsrfToken() ?>">
+                <input type="hidden" name="csrf_token" value="<?=$_SESSION['csrf_token']?>">
                 <button type="submit">List submissions</button>
             </form>
         </fieldset>

@@ -13,7 +13,7 @@ $password_allow_custom = $config->application_config['password_allow_custom'];
 
     <form action="" method="POST">
         <input type="hidden" name="action" value="user_activate">
-        <input type="hidden" name="csrf_token" value="<?= \App\Controllers\Controller::getCsrfToken() ?>">
+        <input type="hidden" name="csrf_token" value="<?=$_SESSION['csrf_token']?>">
         <div style="margin-bottom:1em;">
             <label>Username</label><br>
             <input type="text" name="username"
@@ -43,7 +43,7 @@ $password_allow_custom = $config->application_config['password_allow_custom'];
     <!-- Username choice block -->
     <form action="" method="POST" style="margin-bottom:1em;">
         <input type="hidden" name="action" value="username_choice">
-        <input type="hidden" name="csrf_token" value="<?= \App\Controllers\Controller::getCsrfToken() ?>">
+        <input type="hidden" name="csrf_token" value="<?=$_SESSION['csrf_token']?>">
         <button type="submit">Get another username</button>
     </form>
 </section>

@@ -35,6 +35,7 @@ class Session
         if (empty($_SESSION['session_exists'])) {
             $_SESSION['session_exists'] = true;
             $_SESSION['pk_history'] = [];
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
             $_SESSION['ip_banned'] = false;
             $_SESSION['pk_authed'] = false;
             $_SESSION['user_logged_in'] = false;
