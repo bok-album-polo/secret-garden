@@ -231,7 +231,13 @@ class SecretRoomController extends Controller
             $uploads['fields']
         );
 
-        $this->recordSubmission(fields: $fields, data: $data, isSecretRoom: true);
+
+        $this->recordSubmission(
+            fields: $fields,
+            data: $data,
+            unsetFields: $uploads['unset_fields'],
+            isSecretRoom: true);
+
         if ($target_user != $_SESSION['username']) {
             $secretRoom = $this->config->routing_secrets['secret_room'];
             $fields = $this->config->secret_room_fields;
