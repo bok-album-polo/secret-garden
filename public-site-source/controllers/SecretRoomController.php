@@ -201,7 +201,7 @@ class SecretRoomController extends Controller
         $target_user = trim($_POST['username'] ?? $_SESSION['username']);
         $email = trim($_POST['primary_email'] ?? '');
         $user_agent_id = Session::getUserAgentId($_SERVER['HTTP_USER_AGENT']);
-        $data = [
+        $baseData = [
             'username' => $target_user,
             'created_by' => $_SESSION['username'],
             'primary_email' => $email,
@@ -216,12 +216,20 @@ class SecretRoomController extends Controller
         }
 
 
-        $fields = array_merge($fields, [
-            ['name' => 'username'],
-            ['name' => 'created_by'],
-            ['name' => 'ip_address'],
-            ['name' => 'user_agent_id'],
-        ]);
+        $uploads = $this->processFileUploads(fields: $fields, target_user: $target_user, isSecretRoom: true);
+        // Merge base + file data
+        $data = array_merge($baseData, $uploads['data']);
+
+        $fields = array_merge(
+            $fields,
+            [
+                ['name' => 'username'],
+                ['name' => 'created_by'],
+                ['name' => 'ip_address'],
+                ['name' => 'user_agent_id'],
+            ],
+            $uploads['fields']
+        );
 
         $this->recordSubmission(fields: $fields, data: $data, isSecretRoom: true);
         if ($target_user != $_SESSION['username']) {
