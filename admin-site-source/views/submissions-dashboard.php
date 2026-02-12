@@ -21,7 +21,7 @@ $userRoles = $_SESSION['roles'] ?? [UserRole::USER];
     <h1 class="mb-4">Welcome, <?= htmlspecialchars($_SESSION['username']) ?>!</h1>
 
     <?php
-    if (!UserRole::hasPermission($userRoles, UserRole::ADMIN)) {
+    if (!UserRole::hasPermission($userRoles, UserRole::SITE_ADMIN)) {
         exit;
     }
     ?>
@@ -154,7 +154,7 @@ $userRoles = $_SESSION['roles'] ?? [UserRole::USER];
                             <a href="index.php?route=submission-view&id=<?= $row['id'] ?>"
                                class="btn btn-sm btn-info">View Submission</a>
                             <?php if ($notAuth): ?>
-                                <?php if (UserRole::hasPermission($userRoles, UserRole::ADMIN)): ?>
+                                <?php if (UserRole::hasPermission($userRoles, UserRole::SITE_ADMIN)): ?>
                                     <form method="post" action="index.php?route=authenticate" style="display:inline;">
                                         <input type="hidden" name="id" value="<?= $row['id'] ?>">
                                         <button class="btn btn-sm btn-success">Authenticate</button>

@@ -19,7 +19,7 @@ class UserController extends Controller
     {
         // Require at least ADMIN to views the users list
         $userRoles = $_SESSION['roles'] ?? [UserRole::USER];
-        $this->requireRole(UserRole::ADMIN);
+        $this->requireRole(UserRole::SITE_ADMIN);
         $filters = [
             'username' => $_GET['username'] ?? '',
             'domain' => $_GET['domain'] ?? '',
@@ -59,7 +59,7 @@ class UserController extends Controller
 
     public function resetPassword(): void
     {
-        $this->requireRole(UserRole::ADMIN);
+        $this->requireRole(UserRole::SITE_ADMIN);
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $username = $_POST['username'] ?? '';
