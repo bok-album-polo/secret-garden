@@ -28,7 +28,6 @@ if (!UserRole::hasPermission($userRoles, UserRole::ADMIN)) {
             \App\Controllers\Controller::renderForm(
                     fields: $fields,
                     defaults: $registration,
-                    isSecretRoom: true,
             );
             ?>
         </div>
