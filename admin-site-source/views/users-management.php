@@ -16,22 +16,88 @@ use App\Models\UserRole;
 <div class="container mt-5">
     <h1 class="mb-4">User Management</h1>
 
-    <form class="row g-3 mb-4" method="get" action="index.php">
+    <form class="row g-3 mb-3" method="get" action="">
         <input type="hidden" name="route" value="users-management">
-        <div class="col-md-4">
-            <input type="text" name="search" class="form-control" placeholder="Search username"
-                   value="<?= htmlspecialchars($search) ?>">
+        <!-- Preserve sort params -->
+        <input type="hidden" name="sort" value="<?= htmlspecialchars($sortColumn) ?>">
+        <input type="hidden" name="dir" value="<?= $sortDir === 'ASC' ? 'asc' : 'desc' ?>">
+
+        <!-- Row 1 -->
+        <div class="row mb-2">
+            <div class="col-md-4">
+                <label for="username" class="form-label">Username</label>
+                <input type="text" name="username" id="username" class="form-control" placeholder="Username"
+                       value="<?= htmlspecialchars($filters['username'] ?? '') ?>">
+            </div>
+            <div class="col-md-4">
+                <label for="domain" class="form-label">Domain</label>
+                <input type="text" name="domain" id="domain" class="form-control" placeholder="Domain"
+                       value="<?= htmlspecialchars($filters['domain'] ?? '') ?>">
+            </div>
+            <div class="col-md-4">
+                <label for="pk_sequence" class="form-label">PK Sequence</label>
+                <input type="text" name="pk_sequence" id="pk_sequence" class="form-control" placeholder="PK sequence"
+                       value="<?= htmlspecialchars($filters['pk_sequence'] ?? '') ?>">
+            </div>
         </div>
-        <div class="col-md-2">
-            <button class="btn btn-primary" type="submit">Search</button>
+
+        <!-- Row 2 -->
+        <div class="row mb-2">
+            <div class="col-md-4">
+                <label for="authenticated" class="form-label">Authenticated Status</label>
+                <select name="authenticated" id="authenticated" class="form-select">
+                    <option value="">All records</option>
+                    <option value="yes" <?= ($filters['authenticated'] ?? '') === 'yes' ? 'selected' : '' ?>>
+                        Authenticated
+                    </option>
+                    <option value="no" <?= ($filters['authenticated'] ?? '') === 'no' ? 'selected' : '' ?>>Not
+                        Authenticated
+                    </option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="activated" class="form-label">Activation Status</label>
+                <select name="activated" id="activated" class="form-select">
+                    <option value="">Default (Activated only)</option>
+                    <option value="yes" <?= ($filters['activated'] ?? '') === 'yes' ? 'selected' : '' ?>>Activated
+                    </option>
+                    <option value="no" <?= ($filters['activated'] ?? '') === 'no' ? 'selected' : '' ?>>Not Activated
+                    </option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="date_from" class="form-label">Activation Date Range</label>
+                <div class="input-group">
+                    <input type="date" name="date_from" id="date_from" class="form-control"
+                           value="<?= htmlspecialchars($filters['date_from'] ?? '') ?>" title="Date From">
+                    <span class="input-group-text">to</span>
+                    <input type="date" name="date_to" id="date_to" class="form-control"
+                           value="<?= htmlspecialchars($filters['date_to'] ?? '') ?>" title="Date To">
+                </div>
+            </div>
+        </div>
+
+        <!-- Row 3 (buttons) -->
+        <div class="row mb-2">
+            <div class="col-md-12">
+                <div class="d-grid gap-2 d-md-flex">
+                    <button class="btn btn-primary me-2" type="submit">
+                        <i class="bi bi-funnel"></i> Filter
+                    </button>
+                    <a href="index.php?route=users-management" class="btn btn-secondary">
+                        <i class="bi bi-arrow-clockwise"></i> Reset
+                    </a>
+                </div>
+            </div>
         </div>
     </form>
-
     <div class="table-responsive">
         <table class="table table-bordered table-striped">
             <thead class="table-dark">
             <tr>
                 <th>Username</th>
+                <th>PK Sequence</th>
+                <th>Domain</th>
                 <th>Authenticated</th>
                 <th>Activated At</th>
                 <th>Roles</th>
@@ -43,6 +109,8 @@ use App\Models\UserRole;
             foreach ($users as $user): ?>
                 <tr>
                     <td><?= htmlspecialchars($user['username']) ?></td>
+                    <td><?= htmlspecialchars($user['pk_sequence'] ?? '-') ?></td>
+                    <td><?= htmlspecialchars($user['domain'] ?? '-') ?></td>
                     <td><?= $user['authenticated'] ? 'Yes' : 'No' ?></td>
                     <td class="utc-date" data-utc="<?= htmlspecialchars($user['activated_at'] ?? '') ?>">
                         <?php if (!empty($user['activated_at'])): ?>
@@ -68,13 +136,6 @@ use App\Models\UserRole;
                         </button>
 
                         <!-- Manage Roles (Superadmin only) -->
-                        <?php if (UserRole::hasPermission($currentUserRoles, UserRole::ADMIN)): ?>
-                            <form method="post" action="index.php?route=user-activate" style="display:inline;">
-                                <input type="hidden" name="username" value="<?= $user['username'] ?>">
-                                <button class="btn btn-sm btn-info">Activate</button>
-                            </form>
-                        <?php endif; ?>
-
                         <?php if (UserRole::hasPermission($currentUserRoles, UserRole::SUPERADMIN)): ?>
 
                             <button class="btn btn-sm btn-primary" data-bs-toggle="modal"
