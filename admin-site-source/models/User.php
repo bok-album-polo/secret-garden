@@ -33,28 +33,72 @@ class User
         return $stmt->fetch();
     }
 
-    public function getAllUsers($search = '')
+    public function getAllUsers($filters = [], $sort = ['column' => 'activated_at', 'dir' => 'DESC']): array
     {
         $sql = "SELECT * FROM users";
+        $whereClauses = [];
         $params = [];
 
-        if ($search) {
-            $sql .= " WHERE username ILIKE :search OR domain ILIKE :search";
-            $params['search'] = '%' . $search . '%';
+        if (!empty($filters['username'])) {
+            $whereClauses[] = "username ILIKE :username";
+            $params['username'] = '%' . $filters['username'] . '%';
+        }
+        if (!empty($filters['domain'])) {
+            $whereClauses[] = "domain ILIKE :domain";
+            $params['domain'] = '%' . $filters['domain'] . '%';
+        }
+        if (!empty($filters['pk_sequence'])) {
+            $whereClauses[] = "pk_sequence = :pk_sequence";
+            $params['pk_sequence'] = $filters['pk_sequence'];
+        }
+        if (!empty($filters['authenticated'])) {
+            if ($filters['authenticated'] === 'yes') {
+                $whereClauses[] = "authenticated = true";
+            } elseif ($filters['authenticated'] === 'no') {
+                $whereClauses[] = "authenticated = false";
+            }
+        }
+        if (!empty($filters['date_from'])) {
+            $whereClauses[] = "activated_at >= :date_from";
+            $params['date_from'] = $filters['date_from'] . ' 00:00:00';
+        }
+        if (!empty($filters['date_to'])) {
+            $whereClauses[] = "activated_at <= :date_to";
+            $params['date_to'] = $filters['date_to'] . ' 23:59:59';
         }
 
-        $sql .= " ORDER BY activated_at ASC";
+        // Default: only activated users
+        if (empty($filters['activated'])) {
+            $whereClauses[] = "activated_at IS NOT NULL";
+        } else {
+            if ($filters['activated'] === 'yes') {
+                $whereClauses[] = "activated_at IS NOT NULL";
+            } elseif ($filters['activated'] === 'no') {
+                $whereClauses[] = "activated_at IS NULL";
+            }
+        }
+
+        if (!empty($whereClauses)) {
+            $sql .= " WHERE " . implode(' AND ', $whereClauses);
+        }
+
+        // Sorting
+        $allowedSorts = ['username', 'domain', 'pk_sequence', 'activated_at', 'authenticated'];
+        $sortCol = in_array($sort['column'], $allowedSorts) ? $sort['column'] : 'activated_at';
+        $sortDir = strtoupper($sort['dir']) === 'ASC' ? 'ASC' : 'DESC';
+
+        $sql .= " ORDER BY $sortCol $sortDir";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
         return $stmt->fetchAll();
     }
 
-    public function updatePassword($username, $newHash)
+    public function updatePassword($username, $password): bool
     {
-        $stmt = $this->db->prepare("UPDATE users SET password = :hash WHERE username = :username");
+        $stmt = $this->db->prepare("UPDATE users SET password = :password WHERE username = :username");
         return $stmt->execute([
-            'password' => $newHash,
+            'password' => $password,
             'username' => $username
         ]);
     }
