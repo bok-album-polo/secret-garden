@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Models\SecretRoomSubmission;
+use App\Models\UserAgent;
 use App\Models\UserRole;
 
 class SecretRoomController extends Controller
@@ -45,10 +46,7 @@ class SecretRoomController extends Controller
 
     public function view()
     {
-        $userRoles = $_SESSION['roles'] ?? [UserRole::USER];
-        if (!UserRole::hasPermission($userRoles, UserRole::ADMIN)) {
-            exit;
-        }
+        $this->requireRole(UserRole::ADMIN);
 
         $id = $_GET['id'] ?? null;
         if (!$id) {
@@ -72,50 +70,53 @@ class SecretRoomController extends Controller
 
     public function edit()
     {
+        $this->requireRole(UserRole::ADMIN);
 
-        $userRoles = $_SESSION['roles'] ?? [UserRole::USER];
-        if (!UserRole::hasPermission($userRoles, UserRole::ADMIN)) {
-            exit;
-        }
+        if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+            $id = (int)($_GET['id'] ?? -1);
 
-        $id = $_GET['id'] ?? null;
-        if (!$id) {
-            $this->redirect('index.php');
+            $registration = $this->secretRoomSubmissionModel->getSubmissionById($id);
+            if (!$registration) {
+                $this->redirect('index.php');
+            }
         }
-
-        $registration = $this->secretRoomSubmissionModel->getSubmissionById($id);
-        if (!$registration) {
-            $this->redirect('index.php');
-        }
+        $fields = $this->config->secret_room_fields;
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $fields = $this->config->secret_door_fields;
+            $username = trim($_POST['username'] ?? '');
+            $email = trim($_POST['primary_email'] ?? '');
+            $userAgentId = UserAgent::getUserAgentId($_SERVER['HTTP_USER_AGENT'] ?? '');
             $data = [
-                'username' => $registration['username'], // Username cannot be changed to maintain history link
-                'email' => $_POST['email'] ?? '',
-                'created_by' => $_SESSION['username']
+                'username' => $username,
+                'created_by' => $_SESSION['username'],
+                'primary_email' => $email,
+                'user_agent_id' => $userAgentId,
+                'ip_address' => $_SERVER['REMOTE_ADDR'],
+                'authenticated' => true,
             ];
 
-            if (UserRole::hasPermission($_SESSION['roles'], UserRole::ADMIN)) {
-                $data['authenticated'] = true;
-            }
-
-            $fields = array_merge($fields, [
+            $extraFields = [
                 ['name' => 'ip_address'],
+                ['name' => 'username'],
                 ['name' => 'user_agent_id'],
-                ['authenticated' => 'authenticated'],
+                ['name' => 'authenticated'],
                 ['name' => 'created_by']
-            ]);
+            ];
+            $submission_fields = array_merge($fields, $extraFields);
 
-
-            if ($this->recordSubmission(fields: $fields, data: $data, isSecretRoom: true)) {
+            if ($this->recordSubmission(fields: $submission_fields, data: $data, isSecretRoom: true)) {
                 $this->redirect('index.php?route=dashboard');
             }
         }
 
 
+        $fields = array_merge($fields, [
+            ['name' => 'username', 'html_type' => 'hidden', 'readonly' => true,],
+        ]);
+
         $this->render('submission-edit', [
             'pageTitle' => 'Edit SecretRoomSubmission',
+            'fields' => $fields,
             'registration' => $registration
         ]);
     }
