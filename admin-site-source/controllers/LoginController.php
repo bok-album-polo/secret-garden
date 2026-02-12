@@ -32,10 +32,10 @@ class LoginController extends Controller
 
         if ($user && password_verify($pass, $user['password'])) {
 
-            if (!$user['authenticated']) {
-                $_SESSION['error'] = 2;
-                $this->redirect($_SERVER['REQUEST_URI']);
-            }
+//            if (!$user['authenticated']) {
+//                $_SESSION['error'] = 2;
+//                $this->redirect($_SERVER['REQUEST_URI']);
+//            }
 
 
             $_SESSION['user_logged_in'] = true;
