@@ -333,7 +333,7 @@ EDIT_FORM;
         $maxSize = $this->config->application_config['max_upload_size'] ?? 1048576; // Default 1MB
         $file = $_FILES[$inputName];
         $filename = basename($file['name']);
-        $fileContent = '';
+        $fileContent = null;
 
         if ($file['error'] !== UPLOAD_ERR_OK) {
             // If upload failed, return error code as filename and empty content
