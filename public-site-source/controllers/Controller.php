@@ -289,6 +289,41 @@ EDIT_FORM;
         }
     }
 
+    /**
+     * Process file upload fields for any form submission.
+     *
+     * @param array $fields Configured form fields
+     * @return array{data: array<string, string>, fields: array<int, array<string, string>>}
+     */
+    protected function processFileUploads(array $fields): array
+    {
+        $fileData = [];
+        $extraFields = [];
+
+        foreach ($fields as $field) {
+            if ($field['html_type'] === 'file') {
+                $uploaded_file = $this->handleFileUploadToDb($field['name']);
+
+                // Add file data to $data
+                $fileData[$field['name'] . "_filename"] = $uploaded_file['filename'];
+                $fileData[$field['name'] . "_data"] = $uploaded_file['data'];
+
+                // Add corresponding field definitions
+                $extraFields[] = ['name' => $field['name'] . "_filename"];
+                $extraFields[] = ['name' => $field['name'] . "_data"];
+            }
+        }
+
+        return [
+            'data' => $fileData,
+            'fields' => $extraFields,
+        ];
+    }
+
+    /**
+     * @param string $inputName
+     * @return array|null
+     */
     protected function handleFileUploadToDb(string $inputName): ?array
     {
         if (empty($_FILES[$inputName]['name'])) {
