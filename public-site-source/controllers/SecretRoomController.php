@@ -66,7 +66,7 @@ class SecretRoomController extends Controller
                     $_SESSION['user_logged_in'] = false;
                     $_SESSION['username'] = null;
                     $_SESSION['roles'] = [];
-                    if ($this->config->project_meta['pretty_urls']??false) {
+                    if ($this->config->project_meta['pretty_urls'] ?? false) {
                         $url = $this->config->routing_secrets['secret_door'];
                     } else {
                         $url = "?page=" . $this->config->routing_secrets['secret_door'];
@@ -362,16 +362,26 @@ class SecretRoomController extends Controller
 
     private function handleAdminAuthenticateSubmission(): void
     {
-        $id = $_POST['id'] ?? -1;
+        try {
+            $id = $_POST['id'] ?? -1;
+            $username = $_SESSION['username'] ?? '';
 
-        $statement = $this->db->prepare("select * secret_room_submission_authenticate(:record_id)");
-        $statement->bindValue(':record_id', (int)$id, PDO::PARAM_INT);
-        $statement->execute();
-        $submission = $statement->fetch(PDO::FETCH_ASSOC);
+            $auth_statement = $this->db->prepare("select * from secret_room_submission_authenticate(:record_id)");
+            $auth_statement->bindValue(':record_id', (int)$id, PDO::PARAM_INT);
+            $auth_statement->execute();
 
-        $this->render("admin-view-submission", [
-            'submission' => $submission,
-        ]);
+            $statement = $this->db->prepare("select * from group_admin_list_group_submissions(:username)");
+            $statement->bindValue(':username', $username);
+            $statement->execute();
+            $submissions = $statement->fetchAll(PDO::FETCH_ASSOC);
+
+            $this->render("admin-list-submissions", [
+                'submissions' => $submissions,
+            ]);
+        } catch (\Exception $ex) {
+            error_log("Error processing authentication " . $ex->getMessage());
+            $this->redirect($_SERVER['REQUEST_URI']);
+        }
     }
 
     private function handleAdminViewSubmission($form_readonly = true): void
