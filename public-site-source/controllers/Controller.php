@@ -215,24 +215,6 @@ EDIT_FORM;
         return $html;
     }
 
-    /**
-     * Insert a new submission record into the database.
-     *
-     * This method dynamically builds an INSERT statement based on the provided
-     * field definitions and data values. It supports inserting into either the
-     * default `secret_door_submissions` table or the `secret_room_submissions` table when
-     * `$isSecretRoom` is true.
-     *
-     * @param array $fields Array of field definitions, each containing a 'name' key.
-     *                            Example: [ ['name' => 'username'], ['name' => 'personal_email'] ]
-     * @param array $data Associative array of column => value pairs to insert.
-     *                            Keys must match the field names in $fields.
-     *                            Example: [ 'username' => 'alice', 'personal_email' => 'alice@example.com' ]
-     * @param bool $isSecretRoom Whether to insert into the secret room table.
-     *                            Default is false (insert into `secret_door_submissions`).
-     *
-     * @return void
-     */
     protected function recordSubmission(array $fields, array $data, array $unsetFields = [], bool $isSecretRoom = false): void
     {
         try {
