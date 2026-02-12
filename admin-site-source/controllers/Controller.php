@@ -107,6 +107,7 @@ class Controller
     public static function renderForm(
         array   $fields,
         array   $defaults = [],
+        bool    $form_readonly = false,
         ?string $actionUrl = null   // new parameter
     ): string
     {
@@ -129,7 +130,8 @@ class Controller
             $value = $defaults[$field['name']] ?? '';
             $required = !empty($field['required']) ? ' required' : '';
             $maxlength = isset($field['maxlength']) ? ' maxlength="' . (int)$field['maxlength'] . '"' : '';
-            $readonly = !empty($field['readonly']) ? ' readonly' : '';
+            $readonly = $form_readonly ? ' readonly' : (!empty($field['readonly']) ? ' readonly' : '');
+
 
             // Hidden fields: no label or wrapper
             if ($type === 'hidden') {
@@ -197,10 +199,19 @@ class Controller
 
             $html .= '</div>';
         }
-
-        $html .= '<button type="submit" class="btn btn-primary mt-2">Submit</button>';
+        if (!$form_readonly) {
+            $html .= '<div>';
+            $html .= '<button type="submit" class="btn btn-primary mt-2">Submit</button>';
+            $html .= '</div>';
+        }
         $html .= '</form>';
+        if ($form_readonly) {
+            $record_id = $defaults["id"] ?? 0;
+            $html .= <<<EDIT_FORM
 
+            <a href="index.php?route=submission-edit&id=$record_id" class="btn btn-warning mt-2">Edit</a>
+EDIT_FORM;
+        }
         return $html;
     }
 
