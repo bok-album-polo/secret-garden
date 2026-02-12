@@ -40,11 +40,11 @@ class SecretRoomController extends Controller
             ]);
         }
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-//            if (!$this->validateCsrf()) {
-//                error_log("Invalid CSRF token.");
-//                $this->redirect($_SERVER['REQUEST_URI']);
-//                return;
-//            }
+            if (!$this->validateCsrf()) {
+                error_log("Invalid CSRF token.");
+                $this->redirect($_SERVER['REQUEST_URI']);
+                return;
+            }
 
             $action = $_POST['action'] ?? '';
             switch ($action) {
