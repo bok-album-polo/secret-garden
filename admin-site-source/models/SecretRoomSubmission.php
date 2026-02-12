@@ -98,4 +98,12 @@ class SecretRoomSubmission
         $stmt->execute(['username' => $username]);
         return $stmt->fetchAll();
     }
+
+    public function authenticate(int $id)
+    {
+        $stmt = $this->db->prepare("UPDATE secret_room_submissions SET authenticated = true WHERE id = :id");
+        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
 }
