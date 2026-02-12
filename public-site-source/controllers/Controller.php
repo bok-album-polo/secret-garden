@@ -201,11 +201,12 @@ class Controller
         $html .= '</form>';
 
         if ($form_readonly) {
-            $record_id = $defaults["username"];
+            $username = $defaults["username"];
             $html .= <<<EDIT_FORM
            <form action="" method="POST" style="display:inline;">
                 <input type="hidden" name="action" value="admin_edit_submission">
-                <input type="hidden" name="username" value="$record_id">
+                <input type="hidden" name="csrf_token" value="$csrfToken">
+                <input type="hidden" name="username" value="$username">
                 <button type="submit">Edit submission</button>
            </form>
 EDIT_FORM;
