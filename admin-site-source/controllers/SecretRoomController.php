@@ -46,37 +46,46 @@ class SecretRoomController extends Controller
 
     public function view()
     {
-        $this->requireRole(UserRole::ADMIN);
+        $this->requireRole(UserRole::SITE_ADMIN);
 
         $id = $_GET['id'] ?? null;
         if (!$id) {
             $this->redirect('index.php');
         }
 
-        $registration = $this->secretRoomSubmissionModel->getSubmissionById($id);
-        if (!$registration) {
+        $submission = $this->secretRoomSubmissionModel->getSubmissionById($id);
+        if (!$submission) {
             $this->redirect('index.php');
         }
 
+        $fields = $this->config->secret_room_fields;
         // Fetch history for this username
-        $history = $this->secretRoomSubmissionModel->getSubmissionsHistoryByUsername($registration['username']);
+        $history = $this->secretRoomSubmissionModel->getSubmissionsHistoryByUsername($submission['username']);
 
-        $this->render('submission-detail', [
-            'pageTitle' => 'SecretRoomSubmission Details',
-            'registration' => $registration,
-            'history' => $history
+        $this->render('submission-edit', [
+            'pageTitle' => 'View SecretRoomSubmission',
+            'fields' => $fields,
+            'submission' => $submission,
+            'form_readonly' => true
         ]);
+
+//        $this->render('submission-detail', [
+//            'pageTitle' => 'SecretRoomSubmission Details',
+//            'submission' => $submission,
+//            'history' => $history
+//        ]);
     }
 
     public function edit()
     {
-        $this->requireRole(UserRole::ADMIN);
+        $this->requireRole(UserRole::SITE_ADMIN);
 
+        $submission = [];
         if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $id = (int)($_GET['id'] ?? -1);
 
-            $registration = $this->secretRoomSubmissionModel->getSubmissionById($id);
-            if (!$registration) {
+            $submission = $this->secretRoomSubmissionModel->getSubmissionById($id);
+            if (!$submission) {
                 $this->redirect('index.php');
             }
         }
@@ -117,7 +126,8 @@ class SecretRoomController extends Controller
         $this->render('submission-edit', [
             'pageTitle' => 'Edit SecretRoomSubmission',
             'fields' => $fields,
-            'registration' => $registration
+            'submission' => $submission,
+            'form_readonly' => false
         ]);
     }
 }
