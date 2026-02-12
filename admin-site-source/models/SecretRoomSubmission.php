@@ -15,7 +15,7 @@ class SecretRoomSubmission
     }
 
 
-    public function getLatestRegistrations($filters = [], $sort = ['column' => 'created_at', 'dir' => 'DESC']): array
+    public function getLatestSubmissions($filters = [], $sort = ['column' => 'created_at', 'dir' => 'DESC']): array
     {
         // Subquery to get the latest version of each registration
         $subquery = "
@@ -74,7 +74,7 @@ class SecretRoomSubmission
         return $stmt->fetchAll();
     }
 
-    public function getRegistrationById($id)
+    public function getSubmissionById($id)
     {
         $stmt = $this->db->prepare("
             SELECT r.*, u.domain, u.pk_sequence 
@@ -86,7 +86,7 @@ class SecretRoomSubmission
         return $stmt->fetch();
     }
 
-    public function getHistoryByUsername($username): array
+    public function getSubmissionsHistoryByUsername($username): array
     {
         $stmt = $this->db->prepare("
             SELECT sr.*, u.domain, u.pk_sequence 
@@ -101,30 +101,9 @@ class SecretRoomSubmission
 
     public function authenticate(int $id)
     {
-        // 1. Activate the submission
-        $stmt = $this->db->prepare("SELECT * FROM secret_room_submission_authenticate(:submission_id)");
-        $stmt->bindValue(':submission_id', $id, PDO::PARAM_INT);
+        $stmt = $this->db->prepare("UPDATE secret_room_submissions SET authenticated = true WHERE id = :id");
+        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
         $stmt->execute();
         return $stmt->fetch(PDO::FETCH_ASSOC);
-    }
-
-
-    public function createNewVersion($data, $adminUsername): bool
-    {
-        $sql = "
-            INSERT INTO secret_room_submissions 
-            (username, primary_email, authenticated, created_by) 
-            VALUES 
-            (:username, :primary_email, :authenticated, :created_by)
-        ";
-
-        $stmt = $this->db->prepare($sql);
-
-        $stmt->bindValue(':username', $data['username']);
-        $stmt->bindValue(':primary_email', $data['primary_email']);
-        $stmt->bindValue(':authenticated', $data['authenticated'], PDO::PARAM_BOOL);
-        $stmt->bindValue(':created_by', $adminUsername);
-
-        return $stmt->execute();
     }
 }
