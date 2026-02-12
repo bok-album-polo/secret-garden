@@ -33,7 +33,6 @@ from datetime import datetime, timedelta
 REPO_ROOT: Optional[Path] = None
 BUILD_DIR: Optional[Path] = None
 
-
 # Define the schema for the configuration file
 CONFIG_SCHEMA = {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -57,7 +56,7 @@ CONFIG_SCHEMA = {
                 "num_public_sites": {"type": "integer", "minimum": 1},
                 "num_unique_pk_sequences": {"type": "integer", "minimum": 1},
                 "num_generated_usernames": {"type": "integer", "minimum": 10},
-                "mode": {"type": "string", "enum": ["readwrite","writeonly"]}
+                "mode": {"type": "string", "enum": ["readwrite", "writeonly"]}
             },
             "additionalProperties": True
         },
@@ -89,7 +88,8 @@ CONFIG_SCHEMA = {
                 "pk_max_history": {"type": "integer", "minimum": 1},
                 "password_generated_length": {"type": "integer", "minimum": 1},
                 "password_generated_charset": {"type": "string"},
-                "password_hash_algorithm": {"type": "string", "enum": ["PASSWORD_BCRYPT", "PASSWORD_ARGON2ID", "PASSWORD_PLAINTEXT"]},
+                "password_hash_algorithm": {"type": "string",
+                                            "enum": ["PASSWORD_BCRYPT", "PASSWORD_ARGON2ID", "PASSWORD_PLAINTEXT"]},
                 "password_allow_custom": {"type": "boolean"},
                 "common_sequence_threshold": {"type": "number", "minimum": 0.0, "maximum": 1.0},
                 "file_upload_max_size_mb": {"type": "number", "minimum": 1},
@@ -248,11 +248,12 @@ def validate_config(filepath: Path) -> Optional[Dict[str, Any]]:
             return None
         print("✓ Cross-reference validation passed")
         print("✓ Configuration is valid!")
-        
+
         return config
     except (FileNotFoundError, ValueError) as e:
         print(f"✗ Error: {e}")
         return None
+
 
 def validate_cross_references(config: Dict[str, Any]) -> tuple[bool, Optional[str]]:
     """
@@ -262,7 +263,7 @@ def validate_cross_references(config: Dict[str, Any]) -> tuple[bool, Optional[st
         tuple: (is_valid, error_message)
     """
     errors = []
-    
+
     # Check that num_public_sites matches the number of public_sites
     num_expected = config.get("project_meta", {}).get("num_public_sites", 0)
     num_actual = len(config.get("public_sites", []))
@@ -271,7 +272,7 @@ def validate_cross_references(config: Dict[str, Any]) -> tuple[bool, Optional[st
             f"project_meta.num_public_sites ({num_expected}) does not match "
             f"the number of public_sites configured ({num_actual})"
         )
-    
+
     # Check that pk_max_history >= pk_length
     app_config = config.get("application_config", {})
     pk_length = app_config.get("pk_length", 0)
@@ -297,7 +298,7 @@ def validate_cross_references(config: Dict[str, Any]) -> tuple[bool, Optional[st
     all_domains = [config.get("admin_site", {}).get("domain")]
     public_domains = [site.get("domain") for site in config.get("public_sites", [])]
     all_domains.extend(public_domains)
-    
+
     seen = set()
     for domain in all_domains:
         if domain in seen:
@@ -338,7 +339,7 @@ def validate_cross_references(config: Dict[str, Any]) -> tuple[bool, Optional[st
             errors.append(
                 f"{domain}: num_tripwire_menu ({num_tripwire}) must be < (pages_menu count - 2) ({threshold})"
             )
-    
+
     if errors:
         return False, "\n".join(errors)
     return True, None
@@ -407,7 +408,8 @@ def clone_public_sites(config: Dict[str, Any], source_dir: Optional[Path] = None
     """Clone `public-site-source` into numbered directories under the module `BUILD_DIR` or `REPO_ROOT`."""
     # Determine repo_root and source_dir
     global REPO_ROOT, BUILD_DIR
-    repo_root = REPO_ROOT if REPO_ROOT is not None else (BUILD_DIR.parent if BUILD_DIR is not None else Path(__file__).resolve().parents[2])
+    repo_root = REPO_ROOT if REPO_ROOT is not None else (
+        BUILD_DIR.parent if BUILD_DIR is not None else Path(__file__).resolve().parents[2])
     if source_dir is None:
         source_dir = repo_root / "public-site-source"
 
@@ -696,21 +698,68 @@ final class Config {{
     except Exception as e:
         print(f"  Error writing config for {domain} at {cfg_path}: {e}")
 
+
 def generate_admin_config_php(config: Dict[str, Any]) -> None:
-    """Clone `admin-site-source` into `build` and generate its `config/config.php` file."""
+    """
+    Generate a `controllers/Config.php` file for the admin site.
+
+    The PHP file defines an immutable `Config` class in the App namespace where all values are
+    hardcoded directly into the constructor as native PHP types using the singleton pattern.
+    """
     global BUILD_DIR, REPO_ROOT
-    repo_root = REPO_ROOT if REPO_ROOT is not None else (BUILD_DIR.parent if BUILD_DIR is not None else Path(__file__).resolve().parents[2])
+    repo_root = REPO_ROOT if REPO_ROOT is not None else (
+        BUILD_DIR.parent if BUILD_DIR is not None else Path(__file__).resolve().parents[2])
     build_dir = BUILD_DIR if BUILD_DIR is not None else (repo_root / 'build')
+
+    def to_php_val(val: Any, indent_level: int = 2) -> str:
+        """Recursive helper to convert Python types to formatted PHP syntax."""
+        indent = "    " * indent_level
+        if val is None:
+            return "null"
+        elif isinstance(val, bool):
+            return "true" if val else "false"
+        elif isinstance(val, (int, float)):
+            return str(val)
+        elif isinstance(val, str):
+            # Escape single quotes and backslashes
+            safe_str = val.replace("\\", "\\\\").replace("'", "\\'")
+            return f"'{safe_str}'"
+        elif isinstance(val, list):
+            if not val: return "[]"
+            lines = [f"{indent}    {to_php_val(item, indent_level + 1)}" for item in val]
+            return "[\n" + ",\n".join(lines) + f"\n{indent}]"
+        elif isinstance(val, dict):
+            if not val: return "[]"
+            lines = [f"{indent}    '{k}' => {to_php_val(v, indent_level + 1)}" for k, v in val.items()]
+            return "[\n" + ",\n".join(lines) + f"\n{indent}]"
+        return "'UNKNOWN_TYPE'"
 
     admin = config.get('admin_site', {})
 
-    cfg_dir = build_dir / 'admin-site' / 'config'
+    cfg_dir = build_dir / 'admin-site' / 'controllers'
     cfg_dir.mkdir(parents=True, exist_ok=True)
-    cfg_path = cfg_dir / 'config.php'
+    cfg_path = cfg_dir / 'Config.php'
 
-    # Prepare payload for admin site (do not include 'domain' field)
-    payload = dict(admin)
-    payload.pop('domain', None)
+    # --- 1. Prepare Payload (Business Logic) ---
+    payload = dict(admin)  # shallow copy of the admin-specific config
+    payload.pop('domain', None)  # Remove domain field
+
+    # Merge database_server settings (allow admin-specific overrides)
+    db_server = config.get('database_server', {})
+    admin_db_server = admin.get('database_server', {})
+    payload['database_server'] = {
+        'host': admin_db_server.get('host') or db_server.get('host', '127.0.0.1'),
+        'port': admin_db_server.get('port') or db_server.get('port', 5432),
+        'db_name': admin_db_server.get('db_name') or db_server.get('db_name', 'secret_garden'),
+        'ssl_mode': admin_db_server.get('ssl_mode') or db_server.get('ssl_mode', 'disable')
+    }
+
+    # Ensure db_credentials exists (fallback to empty if not provided)
+    if 'db_credentials' not in payload:
+        payload['db_credentials'] = {
+            'user': '',
+            'pass': ''
+        }
 
     # Add selected project_meta fields
     project_meta = config.get('project_meta', {})
@@ -744,18 +793,64 @@ def generate_admin_config_php(config: Dict[str, Any]) -> None:
         processed_page_fields.append(pcopy)
     payload['secret_room_fields'] = processed_page_fields
 
-    json_payload = json.dumps(payload, indent=2, ensure_ascii=False)
+    # --- 2. Generate Native PHP Class ---
+    properties = []
+    assignments = []
 
-    php_content = ("<?php\n"
-                   "// Generated ADMIN configuration\n"
-                   "$config = json_decode(<<<'JSON'\n%s\nJSON\n, true);\n") % (json_payload)
+    for key, val in payload.items():
+        # Determine PHP Type
+        if isinstance(val, bool):
+            php_type = "bool"
+        elif isinstance(val, int):
+            php_type = "int"
+        elif isinstance(val, (dict, list)):
+            php_type = "array"
+        elif isinstance(val, str):
+            php_type = "string"
+        else:
+            php_type = "mixed"
+
+        # 1. Define Property
+        properties.append(f"    public readonly {php_type} ${key};")
+
+        # 2. Assign Value (converted to PHP literal)
+        php_val = to_php_val(val, indent_level=2)
+        assignments.append(f"        $this->{key} = {php_val};")
+
+    props_block = "\n".join(properties)
+    assign_block = "\n".join(assignments)
+
+    php_content = f"""<?php
+// Generated Immutable Configuration for Admin Site
+
+namespace App\\Controllers;
+
+final class Config {{
+{props_block}
+
+    private static ?self $instance = null;
+
+    private function __construct() {{
+{assign_block}
+    }}
+
+    public static function instance(): self
+    {{
+        if (self::$instance === null) {{
+            self::$instance = new self();
+        }}
+        return self::$instance;
+    }}
+}}
+"""
 
     try:
         with open(cfg_path, 'w', encoding='utf-8') as f:
             f.write(php_content)
-        print(f"  Wrote admin config -> {cfg_path}")
+        print(f"  Wrote native config for admin site -> {cfg_path}")
     except Exception as e:
         print(f"  Error writing admin config at {cfg_path}: {e}")
+
 
 def is_string_in_top_n(file_path: Path, string: str, n_threshold: int) -> bool:
     """
@@ -771,23 +866,24 @@ def is_string_in_top_n(file_path: Path, string: str, n_threshold: int) -> bool:
     """
     if not file_path.exists() or n_threshold <= 0:
         return False
-        
+
     try:
         with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
             for line_num, line in enumerate(f, 1):
                 if line_num > n_threshold:
                     break
-                
+
                 # Clean line: split by comma or space to handle CSVs with metadata
                 line_content = line.strip().split(',')[0].split()[0]
-                
+
                 if line_content == string:
                     print(f"  ⚠️ String '{string}' found at rank {line_num} (Top {n_threshold} filter).")
                     return True
     except Exception as e:
         print(f"  ⚠️ Error reading file for filtering: {e}")
-        
+
     return False
+
 
 def generate_pk_sequences(config: Dict[str, Any]) -> None:
     """
@@ -804,7 +900,8 @@ def generate_pk_sequences(config: Dict[str, Any]) -> None:
     - build/pk_sequences.csv (Format: domain, pk_sequence).
     """
     global BUILD_DIR, REPO_ROOT
-    repo_root = REPO_ROOT if REPO_ROOT is not None else (BUILD_DIR.parent if BUILD_DIR is not None else Path(__file__).resolve().parents[2])
+    repo_root = REPO_ROOT if REPO_ROOT is not None else (
+        BUILD_DIR.parent if BUILD_DIR is not None else Path(__file__).resolve().parents[2])
     build_dir = BUILD_DIR if BUILD_DIR is not None else (repo_root / 'build')
 
     environment = config.get("project_meta", {}).get("environment", "production")
@@ -851,14 +948,14 @@ def generate_pk_sequences(config: Dict[str, Any]) -> None:
     for site in public_sites:
         domain = site.get("domain", "unknown")
         pages_menu = site.get("pages_menu", [])
-        
+
         # Access tripwires stored in the config datastore by generate_public_config_php
         tripwire_names = site.get('tripwire_pages', [])
         tripwire_indices = {pages_menu.index(t) for t in tripwire_names if t in pages_menu}
-        
+
         # 1. Define all valid indices (including 0/home, excluding tripwires)
         valid_indices = [i for i in range(len(pages_menu)) if i not in tripwire_indices]
-        
+
         # 2. Define indices valid for the START of the sequence (exclude 0)
         valid_start_indices = [i for i in valid_indices if i != 0]
 
@@ -869,10 +966,11 @@ def generate_pk_sequences(config: Dict[str, Any]) -> None:
         # 3. Generate Unique Sequences
         site_sequences = set()
         attempts = 0
-        while environment == 'production' and len(site_sequences) < num_sequences_per_site and attempts < 5000: # Limit attempts to avoid infinite loops
+        while environment == 'production' and len(
+                site_sequences) < num_sequences_per_site and attempts < 5000:  # Limit attempts to avoid infinite loops
             seq_digits = []
             digit = last_digit = None
-            
+
             for position in range(pk_length):
                 # Constraint: No consecutive identical digits
                 while digit == last_digit:
@@ -883,7 +981,7 @@ def generate_pk_sequences(config: Dict[str, Any]) -> None:
 
                 seq_digits.append(str(digit))
                 last_digit = digit
-            
+
             if len(seq_digits) >= pk_length:
                 candidate_seq = "".join(seq_digits)
                 if has_common_pin_file:
@@ -892,7 +990,7 @@ def generate_pk_sequences(config: Dict[str, Any]) -> None:
                         continue  # Discard and try again
                 site_sequences.add(candidate_seq)
             attempts += 1
-        
+
         # Generate sequence if environment is development
         if environment == 'development':
             # 1. Sort valid indices (descending)
@@ -902,14 +1000,14 @@ def generate_pk_sequences(config: Dict[str, Any]) -> None:
             seq_digits = []
             while len(seq_digits) < pk_length:
                 seq_digits.extend(sorted_indices)
-            
+
             candidate_seq = "".join(str(d) for d in seq_digits[:pk_length])
             print(f"  [DEV] Generated sequence for {domain}: {candidate_seq}")
             site_sequences.add(candidate_seq)
 
         for s in site_sequences:
             all_generated_pairs.append((domain, s))
-        
+
         print(f"  ✓ Generated {len(site_sequences)} sequences for {domain}")
 
     # 4. Write to CSV
@@ -922,6 +1020,7 @@ def generate_pk_sequences(config: Dict[str, Any]) -> None:
     except Exception as e:
         print(f"  ✗ Error writing PK sequences CSV: {e}")
 
+
 def generate_sql_01_roles(config: Dict[str, Any]) -> None:
     """
     Generates 01_roles.sql in build/database.
@@ -930,7 +1029,7 @@ def generate_sql_01_roles(config: Dict[str, Any]) -> None:
     global BUILD_DIR, REPO_ROOT
     repo_root = REPO_ROOT if REPO_ROOT is not None else Path(__file__).resolve().parents[2]
     build_dir = BUILD_DIR if BUILD_DIR is not None else (repo_root / 'build')
-    
+
     db_dir = build_dir / 'database'
     db_dir.mkdir(parents=True, exist_ok=True)
     sql_path = db_dir / '01_roles.sql'
@@ -960,6 +1059,7 @@ def generate_sql_01_roles(config: Dict[str, Any]) -> None:
     except Exception as e:
         print(f"  ✗ Error writing 01_roles.sql: {e}")
 
+
 def generate_sql_02_tables_extensions(config: Dict[str, Any]) -> None:
     """
     Generates 02_tables_extensions.sql in build/database.
@@ -969,7 +1069,7 @@ def generate_sql_02_tables_extensions(config: Dict[str, Any]) -> None:
     global BUILD_DIR, REPO_ROOT
     repo_root = REPO_ROOT if REPO_ROOT is not None else Path(__file__).resolve().parents[2]
     build_dir = BUILD_DIR if BUILD_DIR is not None else (repo_root / 'build')
-    
+
     db_dir = build_dir / 'database'
     db_dir.mkdir(parents=True, exist_ok=True)
     out_sql_path = db_dir / '02_tables_extensions.sql'
@@ -983,13 +1083,13 @@ def generate_sql_02_tables_extensions(config: Dict[str, Any]) -> None:
         name = field.get('name')
         if not name:
             continue
-            
+
         pg_type = field.get('pg_type', 'TEXT')
         # If type is VARCHAR, append the length
         if pg_type.upper() == 'VARCHAR':
             length = field.get('maxlength', 255)
             pg_type = f"VARCHAR({length})"
-            
+
         secret_door_fields[name] = pg_type
 
     if secret_door_fields:
@@ -1000,7 +1100,7 @@ def generate_sql_02_tables_extensions(config: Dict[str, Any]) -> None:
     # 2. Aggregate Secret Room Fields (Global)
     # Variable renamed from room_cols to secret_room_fields
     secret_room_fields: Dict[str, str] = {}
-    
+
     for field in config.get('secret_room_fields', []):
         name = field.get('name')
         if not name:
@@ -1029,6 +1129,7 @@ def generate_sql_02_tables_extensions(config: Dict[str, Any]) -> None:
     except Exception as e:
         print(f"  ✗ Error writing {out_sql_path}: {e}")
 
+
 def copy_sql_template(source_name: str, dest_name: str) -> None:
     """
     Generic utility to copy static SQL files from service/database to build/database.
@@ -1040,10 +1141,10 @@ def copy_sql_template(source_name: str, dest_name: str) -> None:
     global BUILD_DIR, REPO_ROOT
     repo_root = REPO_ROOT if REPO_ROOT is not None else Path(__file__).resolve().parents[2]
     build_dir = BUILD_DIR if BUILD_DIR is not None else (repo_root / 'build')
-    
+
     db_dir = build_dir / 'database'
     db_dir.mkdir(parents=True, exist_ok=True)
-    
+
     source_path = repo_root / 'service' / 'database' / source_name
     dest_path = db_dir / dest_name
 
@@ -1057,11 +1158,12 @@ def copy_sql_template(source_name: str, dest_name: str) -> None:
     except Exception as e:
         print(f"  ✗ Error copying {dest_name}: {e}")
 
+
 def process_permission_template(
-    template_path: Path,
-    placeholder: str,
-    users: List[str],
-    sql_blocks: List[str]
+        template_path: Path,
+        placeholder: str,
+        users: List[str],
+        sql_blocks: List[str]
 ) -> None:
     """
     Reads a SQL template, replaces a placeholder with quoted usernames, 
@@ -1083,7 +1185,7 @@ def process_permission_template(
             # Wrap the user in double quotes for PostgreSQL identifier safety
             quoted_user = f'"{user.replace("\"", "\"\"")}"'
             user_block = template_content.replace(placeholder, quoted_user)
-            
+
             sql_blocks.append(f"\n-- Permissions for role: {user}")
             sql_blocks.append(user_block)
 
@@ -1097,11 +1199,11 @@ def generate_sql_05_permissions(config: Dict[str, Any]) -> None:
     global BUILD_DIR, REPO_ROOT
     repo_root = REPO_ROOT if REPO_ROOT is not None else Path(__file__).resolve().parents[2]
     build_dir = BUILD_DIR if BUILD_DIR is not None else (repo_root / 'build')
-    
+
     db_dir = build_dir / 'database'
     db_dir.mkdir(parents=True, exist_ok=True)
     out_sql_path = db_dir / '05_permissions.sql'
-    
+
     # Source paths for the base SQL templates
     base_admin_sql_path = repo_root / 'service' / 'database' / 'base-05-permissions-admin.sql'
     base_public_rw_sql_path = repo_root / 'service' / 'database' / 'base-05-permissions-public-readwrite.sql'
@@ -1109,7 +1211,7 @@ def generate_sql_05_permissions(config: Dict[str, Any]) -> None:
     base_public_dev_sql_path = repo_root / 'service' / 'database' / 'base-05-permissions-public-development.sql'
 
     final_sql_blocks = ["-- Generated Permissions for Secret Garden Users"]
-    
+
     # Determine operation mode
     mode = config.get('project_meta', {}).get('mode', 'writeonly')
     environment = config.get('project_meta', {}).get('environment', 'production')
@@ -1163,6 +1265,7 @@ def generate_sql_05_permissions(config: Dict[str, Any]) -> None:
     except Exception as e:
         print(f"  ✗ Error writing 05_permissions.sql: {e}")
 
+
 def generate_sql_06_data(config: Dict[str, Any]) -> None:
     """
     Generates 06_data.sql in build/database.
@@ -1171,11 +1274,11 @@ def generate_sql_06_data(config: Dict[str, Any]) -> None:
     global BUILD_DIR, REPO_ROOT
     repo_root = REPO_ROOT if REPO_ROOT is not None else Path(__file__).resolve().parents[2]
     build_dir = BUILD_DIR if BUILD_DIR is not None else (repo_root / 'build')
-    
+
     db_dir = build_dir / 'database'
     db_dir.mkdir(parents=True, exist_ok=True)
     sql_path = db_dir / '06_data.sql'
-    
+
     sql_lines = ["-- Seed Data for Secret Garden", ""]
 
     # --- Part 1: PK Sequences ---
@@ -1190,7 +1293,7 @@ def generate_sql_06_data(config: Dict[str, Any]) -> None:
                     domain = row[0].replace("'", "''")
                     seq = row[1].replace("'", "''")
                     values.append(f"('{domain}', '{seq}')")
-            
+
             if values:
                 sql_lines.append("-- 1. Seed pk_sequences")
                 sql_lines.append("INSERT INTO pk_sequences (domain, pk_sequence) VALUES")
@@ -1212,7 +1315,7 @@ def generate_sql_06_data(config: Dict[str, Any]) -> None:
             try:
                 with open(users_csv, 'r', newline='', encoding='utf-8') as f:
                     reader = csv.reader(f)
-                    header = next(reader, None) # Skip header
+                    header = next(reader, None)  # Skip header
 
                     start_date = datetime(2001, 1, 1)
                     end_date = datetime(2020, 12, 31, 23, 59, 59)
@@ -1227,7 +1330,7 @@ def generate_sql_06_data(config: Dict[str, Any]) -> None:
                         random_past_time = start_date + timedelta(seconds=random.randint(0, total_seconds))
                         time_dispatched = random_past_time.strftime('%Y-%m-%d %H:%M:%S+00')
 
-                        values.append(f"('{username}', '{displayname}', '{time_dispatched}')")            
+                        values.append(f"('{username}', '{displayname}', '{time_dispatched}')")
                 if values:
                     sql_lines.append("-- 2. Seed users (Vending Pool)")
                     sql_lines.append("INSERT INTO users (username, displayname, time_dispatched) VALUES")
@@ -1251,6 +1354,7 @@ def generate_sql_06_data(config: Dict[str, Any]) -> None:
     except Exception as e:
         print(f"  ✗ Error writing 06_data.sql: {e}")
 
+
 def generate_base_usernames_csv(config: Dict[str, Any]) -> None:
     """
     Generates base_usernames.csv in build/.
@@ -1266,13 +1370,13 @@ def generate_base_usernames_csv(config: Dict[str, Any]) -> None:
     global BUILD_DIR, REPO_ROOT
     repo_root = REPO_ROOT if REPO_ROOT is not None else Path(__file__).resolve().parents[2]
     build_dir = BUILD_DIR if BUILD_DIR is not None else (repo_root / 'build')
-    
+
     csv_path = build_dir / 'base_usernames.csv'
-    
+
     # Target count from specific config variable
     project_meta = config.get("project_meta", {})
     target_count = project_meta.get("num_generated_usernames", 100)
-    
+
     # 300 Adjectives
     adjectives = [
         "absurd", "acidic", "active", "actual", "adept", "agile", "alert", "alive", "alpine", "amber",
@@ -1315,7 +1419,7 @@ def generate_base_usernames_csv(config: Dict[str, Any]) -> None:
         "wet", "white", "whole", "wide", "wild", "windy", "winged", "winter", "wise", "witty",
         "wooden", "wrong", "yellow", "young", "zen", "zero", "zinc", "zone", "zoom"
     ]
-    
+
     # 300 Nouns
     nouns = [
         "ace", "agent", "alpha", "anchor", "angel", "apex", "arch", "area", "arena", "ark",
@@ -1367,30 +1471,30 @@ def generate_base_usernames_csv(config: Dict[str, Any]) -> None:
         "pass", "path", "pawn", "peak", "pear", "pearl", "pen", "pet", "phase", "phone",
         "photo", "pike", "pilot", "pine", "pipe", "pit", "plan", "plane", "plant", "plate"
     ]
-    
+
     sysrand = random.SystemRandom()
     generated = set()
     rows = []
-    
+
     keyspace = len(adjectives) * len(nouns) * (9999 - 10 + 1)
     print(f"\nGenerating {target_count:,} usernames (Keyspace: {keyspace:,} combinations)...")
-    
+
     attempts = 0
-    max_attempts = target_count * 20 
-    
+    max_attempts = target_count * 20
+
     while len(rows) < target_count and attempts < max_attempts:
         attempts += 1
         adj = sysrand.choice(adjectives)
         noun = sysrand.choice(nouns)
-        
+
         number = sysrand.randint(10, 9999)
         username = f"{adj}{noun}{number}"
         displayname = f"{adj.title()} {noun.title()} {number}"
-        
+
         if username not in generated:
             generated.add(username)
             rows.append((username, displayname))
-            
+
     try:
         with open(csv_path, 'w', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
@@ -1399,6 +1503,7 @@ def generate_base_usernames_csv(config: Dict[str, Any]) -> None:
         print(f"✓ Usernames CSV generated: {csv_path}")
     except Exception as e:
         print(f"  ✗ Error writing {csv_path}: {e}")
+
 
 def discovery_probablity_analysis(config: Dict[str, Any]) -> None:
     """Computes and displays discovery probability for each public site."""
@@ -1410,7 +1515,7 @@ def discovery_probablity_analysis(config: Dict[str, Any]) -> None:
 
     num_unique_pk_sequences = config.get("project_meta", {}).get("num_unique_pk_sequences", 0)
     num_public_sites = len(config.get("public_sites", []))
-    
+
     if num_public_sites == 0:
         print("  No public sites found for analysis.")
         return
@@ -1428,10 +1533,12 @@ def discovery_probablity_analysis(config: Dict[str, Any]) -> None:
             num_pages_menu, num_sequences_per_site, pk_length, sliding_window, num_tripwire)
 
         print(f"  {domain}:")
-        print(f"    num_pages={num_pages_menu}, num_sequences_per_site={num_sequences_per_site}, num_tripwire={num_tripwire}")
+        print(
+            f"    num_pages={num_pages_menu}, num_sequences_per_site={num_sequences_per_site}, num_tripwire={num_tripwire}")
         print(f"    P_single={num_sequences_per_site}/(({num_pages_menu}-1)^{pk_length})={p_single}")
         print(f"    sliding_window={sliding_window}")
         print(f"    P_session={p_session:.8f}")
+
 
 def copy_public_site_example_pages(config: Dict[str, Any]) -> None:
     """
@@ -1439,11 +1546,12 @@ def copy_public_site_example_pages(config: Dict[str, Any]) -> None:
     into views/ using shutil.copytree.
     """
     global BUILD_DIR, REPO_ROOT
-    repo_root = REPO_ROOT if REPO_ROOT is not None else (BUILD_DIR.parent if BUILD_DIR is not None else Path(__file__).resolve().parents[2])
+    repo_root = REPO_ROOT if REPO_ROOT is not None else (
+        BUILD_DIR.parent if BUILD_DIR is not None else Path(__file__).resolve().parents[2])
     build_dir = BUILD_DIR if BUILD_DIR is not None else (repo_root / 'build')
-    
+
     source_example_pages = repo_root / 'service' / 'public-site-example-pages'
-    
+
     if not source_example_pages.exists():
         print(f"Warning: Source directory for example pages not found: {source_example_pages}")
         return
@@ -1455,12 +1563,13 @@ def copy_public_site_example_pages(config: Dict[str, Any]) -> None:
         safe = re.sub(r'[^A-Za-z0-9._-]+', '-', domain).strip('-').lower()
         site_dir = build_dir / f"{idx:02d}-{safe}"
         dest_views_dir = site_dir / 'views'
-        
+
         try:
             shutil.copytree(source_example_pages, dest_views_dir, dirs_exist_ok=True)
             print(f"  Merged example pages into {domain}/src/Views")
         except Exception as e:
             print(f"  Error copying example pages to {domain}: {e}")
+
 
 def main():
     """Main entry point."""
@@ -1489,7 +1598,8 @@ def main():
 
     # Check for existing generated content in `build` and prompt user about clearing
     if BUILD_DIR.exists():
-        ans = input("Generated content found in 'build'. Clear all generated content and start over? [y/N]: ").strip().lower()
+        ans = input(
+            "Generated content found in 'build'. Clear all generated content and start over? [y/N]: ").strip().lower()
         if ans in ("y", "yes"):
             clear_generated_content()
             print("Starting over after cleanup.")
@@ -1504,7 +1614,7 @@ def main():
 
     # 2. Analysis Stage - Calling renamed discovery_probablity_analysis
     discovery_probablity_analysis(config)
-    
+
     source_dir = repo_root / "public-site-source"
     clone_public_sites(config, source_dir)
 
@@ -1552,7 +1662,8 @@ def main():
         if not user_provided_base_usernames_path.exists():
             generate_base_usernames_csv(config)
         else:
-            print(f"✓ base-usernames.csv already exists at {user_provided_base_usernames_path}, copying into build directory.")
+            print(
+                f"✓ base-usernames.csv already exists at {user_provided_base_usernames_path}, copying into build directory.")
             shutil.copy(user_provided_base_usernames_path, base_usernames_path)
     else:
         print("✓ Username dispatch disabled; skipping base_usernames.csv generation.")
