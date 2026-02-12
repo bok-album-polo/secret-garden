@@ -104,18 +104,9 @@ class Controller
         return $_SESSION['csrf_token'];
     }
 
-    /**
-     * Render form fields with optional default values.
-     *
-     * @param array $fields Field definitions.
-     * @param array $defaults Associative array of default values keyed by field name.
-     * @return string         The generated HTML markup.
-     */
     public static function renderForm(
         array   $fields,
         array   $defaults = [],
-        bool    $isSecretRoom = false,
-        ?string $target_username = null,
         ?string $actionUrl = null   // new parameter
     ): string
     {
@@ -135,26 +126,68 @@ class Controller
             $name = htmlspecialchars($field['name'], ENT_QUOTES, 'UTF-8');
             $label = htmlspecialchars($field['label'] ?? ucfirst($name), ENT_QUOTES, 'UTF-8');
             $type = htmlspecialchars($field['html_type'] ?? 'text', ENT_QUOTES, 'UTF-8');
-            $value = htmlspecialchars($defaults[$field['name']] ?? '', ENT_QUOTES, 'UTF-8');
-
+            $value = $defaults[$field['name']] ?? '';
             $required = !empty($field['required']) ? ' required' : '';
             $maxlength = isset($field['maxlength']) ? ' maxlength="' . (int)$field['maxlength'] . '"' : '';
             $readonly = !empty($field['readonly']) ? ' readonly' : '';
+
             // Hidden fields: no label or wrapper
             if ($type === 'hidden') {
-                $html .= "<input type=\"hidden\" name=\"{$name}\" value=\"{$value}\">";
+                $html .= "<input type=\"hidden\" name=\"{$name}\" value=\"" . htmlspecialchars($value, ENT_QUOTES, 'UTF-8') . "\">";
                 continue;
             }
 
             $html .= '<div class="mb-3">';
             $html .= "<label for=\"{$name}\" class=\"form-label\">{$label}</label>";
 
-            if ($type === 'textarea') {
-                $html .= "<textarea class=\"form-control\" id=\"{$name}\" name=\"{$name}\"{$required}{$maxlength}{$readonly}>{$value}</textarea>";
-            } elseif ($type === 'file') {
-                $html .= "<input type=\"file\" class=\"form-control\" id=\"{$name}\" name=\"{$name}\"{$required}>";
-            } else {
-                $html .= "<input type=\"{$type}\" class=\"form-control\" id=\"{$name}\" name=\"{$name}\" value=\"{$value}\"{$required}{$maxlength}{$readonly}>";
+            switch ($type) {
+                case 'textarea':
+                    $html .= "<textarea class=\"form-control\" id=\"{$name}\" name=\"{$name}\"{$required}{$maxlength}{$readonly}>"
+                        . htmlspecialchars($value, ENT_QUOTES, 'UTF-8') . "</textarea>";
+                    break;
+
+                case 'file':
+                    $html .= "<input type=\"file\" class=\"form-control\" id=\"{$name}\" name=\"{$name}\"{$required}>";
+                    break;
+
+                case 'select': // dropdown
+                    $html .= "<select class=\"form-select\" id=\"{$name}\" name=\"{$name}\"{$required}>";
+                    foreach ($field['options'] ?? [] as $optValue => $optLabel) {
+                        $optValueEsc = htmlspecialchars($optValue, ENT_QUOTES, 'UTF-8');
+                        $optLabelEsc = htmlspecialchars($optLabel, ENT_QUOTES, 'UTF-8');
+                        $selected = ($value == $optValue) ? ' selected' : '';
+                        $html .= "<option value=\"{$optValueEsc}\"{$selected}>{$optLabelEsc}</option>";
+                    }
+                    $html .= "</select>";
+                    break;
+
+                case 'radio':
+                    foreach ($field['options'] ?? [] as $optValue => $optLabel) {
+                        $optValueEsc = htmlspecialchars($optValue, ENT_QUOTES, 'UTF-8');
+                        $optLabelEsc = htmlspecialchars($optLabel, ENT_QUOTES, 'UTF-8');
+                        $checked = ($value == $optValue) ? ' checked' : '';
+                        $html .= "<div class=\"form-check\">
+                                <input class=\"form-check-input\" type=\"radio\" name=\"{$name}\" id=\"{$name}_{$optValueEsc}\" value=\"{$optValueEsc}\"{$checked}{$required}>
+                                <label class=\"form-check-label\" for=\"{$name}_{$optValueEsc}\">{$optLabelEsc}</label>
+                              </div>";
+                    }
+                    break;
+
+                case 'checkbox':
+                    foreach ($field['options'] ?? [] as $optValue => $optLabel) {
+                        $optValueEsc = htmlspecialchars($optValue, ENT_QUOTES, 'UTF-8');
+                        $optLabelEsc = htmlspecialchars($optLabel, ENT_QUOTES, 'UTF-8');
+                        $checked = (is_array($value) && in_array($optValue, $value)) ? ' checked' : '';
+                        $html .= "<div class=\"form-check\">
+                                <input class=\"form-check-input\" type=\"checkbox\" name=\"{$name}[]\" id=\"{$name}_{$optValueEsc}\" value=\"{$optValueEsc}\"{$checked}{$required}>
+                                <label class=\"form-check-label\" for=\"{$name}_{$optValueEsc}\">{$optLabelEsc}</label>
+                              </div>";
+                    }
+                    break;
+
+                default: // text, number, email, etc.
+                    $html .= "<input type=\"{$type}\" class=\"form-control\" id=\"{$name}\" name=\"{$name}\" value=\""
+                        . htmlspecialchars($value, ENT_QUOTES, 'UTF-8') . "\"{$required}{$maxlength}{$readonly}>";
             }
 
             if (!empty($field['help_text'])) {
@@ -166,7 +199,6 @@ class Controller
         }
 
         $html .= '<button type="submit" class="btn btn-primary mt-2">Submit</button>';
-
         $html .= '</form>';
 
         return $html;
