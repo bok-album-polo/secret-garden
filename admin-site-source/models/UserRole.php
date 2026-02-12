@@ -8,7 +8,7 @@ use PDO;
 class UserRole
 {
     public const string USER = 'user';
-    public const string SITE_ADMIN = 'site_admin';
+    public const string SITE_ADMIN = 'siteadmin';
     public const string GROUP_ADMIN = 'group_admin'; //Used on the public site
     public const string SUPERADMIN = 'superadmin';
 
