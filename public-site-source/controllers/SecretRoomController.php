@@ -66,7 +66,7 @@ class SecretRoomController extends Controller
                     $_SESSION['user_logged_in'] = false;
                     $_SESSION['username'] = null;
                     $_SESSION['roles'] = [];
-                    if ($this->config->project_meta['pretty_urls']) {
+                    if ($this->config->project_meta['pretty_urls']??false) {
                         $url = $this->config->routing_secrets['secret_door'];
                     } else {
                         $url = "?page=" . $this->config->routing_secrets['secret_door'];
