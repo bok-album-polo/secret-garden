@@ -30,6 +30,7 @@
 
     <form method="POST">
         <input type="hidden" name="action" value="login">
+        <input type="hidden" name="csrf_token" value="<?= \App\Controllers\Controller::getCsrfToken() ?>">
         <p>
             <button type="submit">Proceed to secret_room form</button>
         </p>

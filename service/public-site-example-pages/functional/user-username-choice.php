@@ -43,6 +43,7 @@ $password_allow_custom = $config->application_config['password_allow_custom'];
     <!-- Username choice block -->
     <form action="" method="POST" style="margin-bottom:1em;">
         <input type="hidden" name="action" value="username_choice">
+        <input type="hidden" name="csrf_token" value="<?= \App\Controllers\Controller::getCsrfToken() ?>">
         <button type="submit">Get another username</button>
     </form>
 </section>

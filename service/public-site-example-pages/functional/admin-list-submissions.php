@@ -33,12 +33,14 @@
                         <form action="" method="POST" style="display:inline;">
                             <input type="hidden" name="action" value="admin_authenticate_submission">
                             <input type="hidden" name="id" value="<?= $submission['id'] ?>">
+                            <input type="hidden" name="csrf_token" value="<?= \App\Controllers\Controller::getCsrfToken() ?>">
                             <button type="submit">Authenticate submission</button>
                         </form>
 
                         <form action="" method="POST" style="display:inline;">
                             <input type="hidden" name="action" value="admin_view_submission">
                             <input type="hidden" name="username" value="<?= $submission['username'] ?>">
+                            <input type="hidden" name="csrf_token" value="<?= \App\Controllers\Controller::getCsrfToken() ?>">
                             <button type="submit">View submission</button>
                         </form>
                     </td>
