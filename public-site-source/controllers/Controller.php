@@ -243,17 +243,20 @@ EDIT_FORM;
                 }
             }
             $fields = array_values($uniqueFields);
-
             // Define expected types for each column (extend as needed)
             $fieldTypes = [
                 'user_agent_id' => 'int',
-                'file' => 'bytea',
+//                'file' => 'bytea',
             ];
 
             // Extract column names from $fields
             $dbColumns = [];
             foreach ($fields as $field) {
                 $dbColumns[] = $field['name'];
+                // Auto-detect file fields by _data suffix
+                if (str_ends_with($field['name'], '_data')) {
+                    $fieldTypes[$field['name']] = 'bytea';
+                }
             }
 
             // Placeholders for each column
@@ -266,10 +269,8 @@ EDIT_FORM;
 
             // Prepare and bind values from $data
             $stmt = $this->db->prepare($sql);
-
             foreach ($dbColumns as $col) {
                 $value = $data[$col] ?? null;
-
                 if ($value === null) {
                     $stmt->bindValue(':' . $col, null, PDO::PARAM_NULL);
                 } elseif (($fieldTypes[$col] ?? null) === 'bytea') {
@@ -288,4 +289,37 @@ EDIT_FORM;
         }
     }
 
+    protected function handleFileUploadToDb(string $inputName): ?array
+    {
+        if (empty($_FILES[$inputName]['name'])) {
+            return null;
+        }
+
+        $maxSize = $this->config->application_config['max_upload_size'] ?? 1048576; // Default 1MB
+        $file = $_FILES[$inputName];
+        $filename = basename($file['name']);
+        $fileContent = '';
+
+        if ($file['error'] !== UPLOAD_ERR_OK) {
+            // If upload failed, return error code as filename and empty content
+            $filename = "Upload error code {$file['error']}";
+        } elseif ($file['size'] > $maxSize) {
+            // If file too large, keep filename but empty content
+            error_log("File '$filename' exceeds maximum size of $maxSize bytes");
+        } else {
+            // Read file content
+            $content = file_get_contents($file['tmp_name']);
+            if ($content !== false) {
+                $fileContent = $content;
+            } else {
+                error_log("Failed to read file content for '$filename'");
+                $filename = "Read error";
+            }
+        }
+
+        return [
+            'filename' => $filename,
+            'data' => $fileContent
+        ];
+    }
 }
