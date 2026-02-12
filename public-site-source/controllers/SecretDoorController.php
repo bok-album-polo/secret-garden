@@ -42,7 +42,11 @@ class SecretDoorController extends Controller
         ];
 
         // Reusable file upload handler
-        $uploads = $this->processFileUploads($fields);
+        $uploads = $this->processFileUploads(
+            fields: $fields,
+            target_user: '',
+            isSecretRoom: true
+        );
 
         // Merge base + file data
         $data = array_merge($baseData, $uploads['data']);
@@ -57,6 +61,10 @@ class SecretDoorController extends Controller
             $uploads['fields']
         );
 
-        $this->recordSubmission(fields: $fields, data: $data);
+        $this->recordSubmission(
+            fields: $fields,
+            data: $data,
+            unsetFields: $uploads['unset_fields'],
+            isSecretRoom: true);
     }
 }
