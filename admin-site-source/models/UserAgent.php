@@ -1,6 +1,7 @@
 <?php
 
-namespace models;
+
+namespace App\Models;
 
 use App\Controllers\Database;
 use PDO;
