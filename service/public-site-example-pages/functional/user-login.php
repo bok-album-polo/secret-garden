@@ -23,6 +23,7 @@
     <p>Don’t have an account?</p>
     <form action="" method="POST" style="display:inline;">
         <input type="hidden" name="action" value="username_choice">
+        <input type="hidden" name="csrf_token" value="<?=$_SESSION['csrf_token']?>">
         <button type="submit">Choose username</button>
     </form>
 </section>

@@ -29,6 +29,7 @@ if ($submission ?? null) {
     <?php if ($_SESSION['user_logged_in']): ?>
         <form action="" method="POST" style="display:inline;">
             <input type="hidden" name="action" value="user_logout">
+            <input type="hidden" name="csrf_token" value="<?=$_SESSION['csrf_token']?>">
             <button type="submit">Logout</button>
         </form>
     <?php endif; ?>
