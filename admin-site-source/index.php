@@ -23,7 +23,6 @@ match ($route) {
     'dashboard' => (new SecretRoomController())->index(),
     'submission-view' => (new SecretRoomController())->view(),
     'submission-edit' => (new SecretRoomController())->edit(),
-    'authenticate' => (new SecretRoomController())->authenticate(),
     'users-management' => (new UserController())->index(),
     'user-reset-password' => (new UserController())->resetPassword(),
     'user-update-roles' => (new UserController())->updateRoles(),
