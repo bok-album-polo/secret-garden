@@ -102,11 +102,13 @@ class Controller
      * @param array $defaults Associative array of default values keyed by field name.
      * @return string         The generated HTML markup.
      */
-    public static function renderForm(array   $fields,
-                                      array   $defaults = [],
-                                      bool    $isSecretRoom = false,
-                                      ?string $target_username = null,
-                                      bool    $form_readonly = false): string
+    public static function renderForm(
+        array   $fields,
+        array   $defaults = [],
+        bool    $isSecretRoom = false,
+        ?string $target_username = null,
+        bool    $form_readonly = false
+    ): string
     {
         $config = Config::instance();
 
@@ -128,31 +130,71 @@ class Controller
             $name = htmlspecialchars($field['name'], ENT_QUOTES, 'UTF-8');
             $label = htmlspecialchars($field['label'] ?? ucfirst($name), ENT_QUOTES, 'UTF-8');
             $type = htmlspecialchars($field['html_type'] ?? 'text', ENT_QUOTES, 'UTF-8');
-            $value = htmlspecialchars($defaults[$field['name']] ?? '', ENT_QUOTES, 'UTF-8');
+            $value = $defaults[$field['name']] ?? '';
 
             $required = !empty($field['required']) ? ' required' : '';
             $maxlength = isset($field['maxlength']) ? ' maxlength="' . (int)$field['maxlength'] . '"' : '';
-            if ($form_readonly) {
-                $readonly = ' readonly';
-            } else {
-                $readonly = !empty($field['readonly']) ? ' readonly' : '';
-            }
+            $readonly = $form_readonly ? ' readonly' : (!empty($field['readonly']) ? ' readonly' : '');
 
             // Hidden fields: no label or wrapper
             if ($type === 'hidden') {
-                $html .= "<input type=\"hidden\" name=\"{$name}\" value=\"{$value}\">";
+                $html .= "<input type=\"hidden\" name=\"{$name}\" value=\"" . htmlspecialchars($value, ENT_QUOTES, 'UTF-8') . "\">";
                 continue;
             }
 
             $html .= '<div>';
             $html .= "<label for=\"{$name}\">{$label}</label><br>";
 
-            if ($type === 'textarea') {
-                $html .= "<textarea id=\"{$name}\" name=\"{$name}\"{$required}{$maxlength}{$readonly}>{$value}</textarea>";
-            } elseif ($type === 'file') {
-                $html .= "<input type=\"file\" id=\"{$name}\" name=\"{$name}\"{$required}>";
-            } else {
-                $html .= "<input type=\"{$type}\" id=\"{$name}\" name=\"{$name}\" value=\"{$value}\"{$required}{$maxlength}{$readonly}>";
+            switch ($type) {
+                case 'textarea':
+                    $html .= "<textarea id=\"{$name}\" name=\"{$name}\"{$required}{$maxlength}{$readonly}>"
+                        . htmlspecialchars($value, ENT_QUOTES, 'UTF-8') . "</textarea>";
+                    break;
+
+                case 'file':
+                    $html .= "<input type=\"file\" id=\"{$name}\" name=\"{$name}\"{$required}>";
+                    break;
+
+                case 'select': // dropdown
+                    $html .= "<select id=\"{$name}\" name=\"{$name}\"{$required}" . ($form_readonly ? ' disabled' : '') . ">";
+                    foreach ($field['options'] ?? [] as $optValue => $optLabel) {
+                        $optValueEsc = htmlspecialchars($optValue, ENT_QUOTES, 'UTF-8');
+                        $optLabelEsc = htmlspecialchars($optLabel, ENT_QUOTES, 'UTF-8');
+                        $selected = ($value == $optValue) ? ' selected' : '';
+                        $html .= "<option value=\"{$optValueEsc}\"{$selected}>{$optLabelEsc}</option>";
+                    }
+                    $html .= "</select>";
+                    break;
+
+                case 'radio':
+                    foreach ($field['options'] ?? [] as $optValue => $optLabel) {
+                        $optValueEsc = htmlspecialchars($optValue, ENT_QUOTES, 'UTF-8');
+                        $optLabelEsc = htmlspecialchars($optLabel, ENT_QUOTES, 'UTF-8');
+                        $checked = ($value == $optValue) ? ' checked' : '';
+                        $disabled = $form_readonly ? ' disabled' : '';
+                        $html .= "<div>
+                                <input type=\"radio\" name=\"{$name}\" id=\"{$name}_{$optValueEsc}\" value=\"{$optValueEsc}\"{$checked}{$required}{$disabled}>
+                                <label for=\"{$name}_{$optValueEsc}\">{$optLabelEsc}</label>
+                              </div>";
+                    }
+                    break;
+
+                case 'checkbox':
+                    foreach ($field['options'] ?? [] as $optValue => $optLabel) {
+                        $optValueEsc = htmlspecialchars($optValue, ENT_QUOTES, 'UTF-8');
+                        $optLabelEsc = htmlspecialchars($optLabel, ENT_QUOTES, 'UTF-8');
+                        $checked = (is_array($value) && in_array($optValue, $value)) ? ' checked' : '';
+                        $disabled = $form_readonly ? ' disabled' : '';
+                        $html .= "<div>
+                                <input type=\"checkbox\" name=\"{$name}[]\" id=\"{$name}_{$optValueEsc}\" value=\"{$optValueEsc}\"{$checked}{$required}{$disabled}>
+                                <label for=\"{$name}_{$optValueEsc}\">{$optLabelEsc}</label>
+                              </div>";
+                    }
+                    break;
+
+                default: // text, number, email, etc.
+                    $html .= "<input type=\"{$type}\" id=\"{$name}\" name=\"{$name}\" value=\""
+                        . htmlspecialchars($value, ENT_QUOTES, 'UTF-8') . "\"{$required}{$maxlength}{$readonly}>";
             }
 
             if (!empty($field['help_text'])) {
@@ -175,13 +217,13 @@ class Controller
             $record_id = $defaults["username"];
             $html .= <<<EDIT_FORM
            <form action="" method="POST" style="display:inline;">
-                            <input type="hidden" name="action" value="admin_edit_submission">
-                            <input type="hidden" name="username" value="$record_id">
-                            <button type="submit">Edit submission</button>
-                        </form>
+                <input type="hidden" name="action" value="admin_edit_submission">
+                <input type="hidden" name="username" value="$record_id">
+                <button type="submit">Edit submission</button>
+           </form>
 EDIT_FORM;
-
         }
+
         return $html;
     }
 
