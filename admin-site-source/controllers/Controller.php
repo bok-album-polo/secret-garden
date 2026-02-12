@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Models\User;
+use App\Models\UserRole;
 use PDO;
 
 class Controller
@@ -24,6 +25,23 @@ class Controller
             header('Location: index.php?route=login');
             exit;
         }
+    }
+
+    protected function requireRole(string $role): void
+    {
+        $userRoles = $_SESSION['roles'] ?? [UserRole::USER];
+        if (!UserRole::hasPermission($userRoles, $role)) {
+            $this->renderError(403, "You need $role permission to access this page.");
+            exit;
+        }
+    }
+
+    private function renderError(int $statusCode, string $message): void
+    {
+        http_response_code($statusCode);
+        // If not, you can fallback to a simple HTML output:
+        echo "<h1>Error $statusCode</h1><p>" . htmlspecialchars($message) . "</p>";
+        exit;
     }
 
     protected function render(string $view, array $data = []): void
@@ -93,15 +111,23 @@ class Controller
      * @param array $defaults Associative array of default values keyed by field name.
      * @return string         The generated HTML markup.
      */
-    public static function renderForm(array   $fields,
-                                      array   $defaults = [],
-                                      bool    $isSecretRoom = false,
-                                      ?string $target_username = null,
-                                      bool    $form_readonly = false): string
+    public static function renderForm(
+        array   $fields,
+        array   $defaults = [],
+        bool    $isSecretRoom = false,
+        ?string $target_username = null,
+        ?string $actionUrl = null   // new parameter
+    ): string
     {
-
         $csrfToken = self::getCsrfToken();
-        $html = '<form method="POST" enctype="multipart/form-data">';
+        $formAction = $actionUrl ? htmlspecialchars($actionUrl, ENT_QUOTES, 'UTF-8') : '';
+
+        $html = '<form method="POST" enctype="multipart/form-data" class="needs-validation" novalidate';
+        if ($formAction) {
+            $html .= ' action="' . $formAction . '"';
+        }
+        $html .= '>';
+
         $html .= '<input type="hidden" name="csrf_token" value="'
             . htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') . '">';
 
@@ -113,42 +139,33 @@ class Controller
 
             $required = !empty($field['required']) ? ' required' : '';
             $maxlength = isset($field['maxlength']) ? ' maxlength="' . (int)$field['maxlength'] . '"' : '';
-            if ($form_readonly) {
-                $readonly = ' readonly';
-            } else {
-                $readonly = !empty($field['readonly']) ? ' readonly' : '';
-            }
-
+            $readonly = !empty($field['readonly']) ? ' readonly' : '';
             // Hidden fields: no label or wrapper
             if ($type === 'hidden') {
                 $html .= "<input type=\"hidden\" name=\"{$name}\" value=\"{$value}\">";
                 continue;
             }
 
-            $html .= '<div>';
-            $html .= "<label for=\"{$name}\">{$label}</label><br>";
+            $html .= '<div class="mb-3">';
+            $html .= "<label for=\"{$name}\" class=\"form-label\">{$label}</label>";
 
             if ($type === 'textarea') {
-                $html .= "<textarea id=\"{$name}\" name=\"{$name}\"{$required}{$maxlength}{$readonly}>{$value}</textarea>";
+                $html .= "<textarea class=\"form-control\" id=\"{$name}\" name=\"{$name}\"{$required}{$maxlength}{$readonly}>{$value}</textarea>";
             } elseif ($type === 'file') {
-                $html .= "<input type=\"file\" id=\"{$name}\" name=\"{$name}\"{$required}>";
+                $html .= "<input type=\"file\" class=\"form-control\" id=\"{$name}\" name=\"{$name}\"{$required}>";
             } else {
-                $html .= "<input type=\"{$type}\" id=\"{$name}\" name=\"{$name}\" value=\"{$value}\"{$required}{$maxlength}{$readonly}>";
+                $html .= "<input type=\"{$type}\" class=\"form-control\" id=\"{$name}\" name=\"{$name}\" value=\"{$value}\"{$required}{$maxlength}{$readonly}>";
             }
 
             if (!empty($field['help_text'])) {
                 $help = htmlspecialchars($field['help_text'], ENT_QUOTES, 'UTF-8');
-                $html .= "<br><small>{$help}</small>";
+                $html .= "<div class=\"form-text\">{$help}</div>";
             }
 
             $html .= '</div>';
         }
 
-        if (!$form_readonly) {
-            $html .= '<div>';
-            $html .= '<button type="submit" style="margin-top: 1em;">Submit</button>';
-            $html .= '</div>';
-        }
+        $html .= '<button type="submit" class="btn btn-primary mt-2">Submit</button>';
 
         $html .= '</form>';
 
@@ -176,6 +193,15 @@ class Controller
     protected function recordSubmission(array $fields, array $data, bool $isSecretRoom = false): bool
     {
         try {
+            // Deduplicate fields by 'name' (last occurrence wins)
+            $uniqueFields = [];
+            foreach ($fields as $field) {
+                if (isset($field['name'])) {
+                    $uniqueFields[$field['name']] = $field;
+                }
+            }
+            $fields = array_values($uniqueFields);
+
             // Define expected types for each column (extend as needed)
             $fieldTypes = [
                 'user_agent_id' => 'int',
@@ -183,10 +209,7 @@ class Controller
             ];
 
             // Extract column names from $fields
-            $dbColumns = [];
-            foreach ($fields as $field) {
-                $dbColumns[] = $field['name'];
-            }
+            $dbColumns = array_column($fields, 'name');
 
             // Placeholders for each column
             $placeholders = ':' . implode(', :', $dbColumns);
@@ -205,7 +228,6 @@ class Controller
                 if ($value === null) {
                     $stmt->bindValue(':' . $col, null, PDO::PARAM_NULL);
                 } elseif (($fieldTypes[$col] ?? null) === 'bytea') {
-                    // Bind binary data for BYTEA columns
                     $stmt->bindValue(':' . $col, $value, PDO::PARAM_LOB);
                 } elseif (($fieldTypes[$col] ?? null) === 'int') {
                     $stmt->bindValue(':' . $col, (int)$value, PDO::PARAM_INT);
