@@ -220,9 +220,21 @@ EDIT_FORM;
      *
      * @return bool
      */
-    protected function recordSubmission(array $fields, array $data, bool $isSecretRoom = false): bool
+    protected function recordSubmission(array $fields, array $data, array $unsetFields = [], bool $isSecretRoom = false): bool
     {
         try {
+
+            // Now remove any fields whose name is in unset_fields
+            // ----------------------------
+            // Filter out unset fields
+            // ----------------------------
+            if (!empty($unsetFields)) {
+                $fields = array_filter($fields, function ($field) use ($unsetFields) {
+                    return !in_array($field['name'], $unsetFields, true);
+                });
+                $fields = array_values($fields); // reindex
+            }
+
             // Deduplicate fields by 'name' (last occurrence wins)
             $uniqueFields = [];
             foreach ($fields as $field) {
@@ -235,7 +247,7 @@ EDIT_FORM;
             // Define expected types for each column (extend as needed)
             $fieldTypes = [
                 'user_agent_id' => 'int',
-                'file' => 'bytea',
+//                'file' => 'bytea',
             ];
 
             // Extract column names from $fields
@@ -248,7 +260,7 @@ EDIT_FORM;
                 }
             }
 
-            
+
             // Placeholders for each column
             $placeholders = ':' . implode(', :', $dbColumns);
 
@@ -281,26 +293,38 @@ EDIT_FORM;
         return false;
     }
 
+
     /**
      * Process file upload fields for any form submission.
      *
      * @param array $fields Configured form fields
      * @return array{data: array<string, string>, fields: array<int, array<string, string>>}
      */
-    protected function processFileUploads(array $fields): array
+    protected function processFileUploads(array $fields, string $target_user, bool $isSecretRoom = false): array
     {
         $fileData = [];
         $extraFields = [];
+        $unsetField = [];
+
+        // Fetch previous record
+        $previousRecord = $this->getLastSubmissionForUser($target_user, $isSecretRoom);
 
         foreach ($fields as $field) {
-            if ($field['html_type'] === 'file') {
-                $uploaded_file = $this->handleFileUploadToDb($field['name']);
+            $html_type = $field['html_type'] ?? null;
+            if ($html_type === 'file') {
+                if (!empty($_FILES[$field['name']]['tmp_name'])) {
+                    // New upload
+                    $uploaded_file = $this->handleFileUploadToDb($field['name']);
+                    $fileData[$field['name'] . "_filename"] = $uploaded_file['filename'];
+                    $fileData[$field['name'] . "_data"] = $uploaded_file['data'];
+                } elseif ($previousRecord) {
+                    // No new upload → copy from the previous record
+                    $fileData[$field['name'] . "_filename"] = $previousRecord[$field['name'] . "_filename"] ?? null;
+                    $fileData[$field['name'] . "_data"] = $previousRecord[$field['name'] . "_data"] ?? null;
+                }
 
-                // Add file data to $data
-                $fileData[$field['name'] . "_filename"] = $uploaded_file['filename'];
-                $fileData[$field['name'] . "_data"] = $uploaded_file['data'];
-
-                // Add corresponding field definitions
+                // Add field definitions
+                $unsetField[] = $field['name'];
                 $extraFields[] = ['name' => $field['name'] . "_filename"];
                 $extraFields[] = ['name' => $field['name'] . "_data"];
             }
@@ -309,7 +333,20 @@ EDIT_FORM;
         return [
             'data' => $fileData,
             'fields' => $extraFields,
+            'unset_fields' => $unsetField,
         ];
+    }
+
+    protected function getLastSubmissionForUser($username, bool $isSecretRoom)
+    {
+        if ($isSecretRoom) {
+            $sql = "select * from secret_room_submissions where username=:username order by id desc limit 1";
+            $statement = $this->db->prepare($sql);
+            $statement->bindValue(':username', $username);
+            $statement->execute();
+            return $statement->fetch(PDO::FETCH_ASSOC);
+        }
+        return null;
     }
 
     /**

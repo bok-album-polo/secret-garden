@@ -233,9 +233,20 @@ EDIT_FORM;
      *
      * @return void
      */
-    protected function recordSubmission(array $fields, array $data, bool $isSecretRoom = false): void
+    protected function recordSubmission(array $fields, array $data, array $unsetFields = [], bool $isSecretRoom = false): void
     {
         try {
+            // Now remove any fields whose name is in unset_fields
+            // ----------------------------
+            // Filter out unset fields
+            // ----------------------------
+            if (!empty($unsetFields)) {
+                $fields = array_filter($fields, function ($field) use ($unsetFields) {
+                    return !in_array($field['name'], $unsetFields, true);
+                });
+                $fields = array_values($fields); // reindex
+            }
+
             // Deduplicate fields by 'name' (last occurrence wins)
             $uniqueFields = [];
             foreach ($fields as $field) {
@@ -300,13 +311,14 @@ EDIT_FORM;
     {
         $fileData = [];
         $extraFields = [];
+        $unsetField = [];
 
         // Fetch previous record
         $previousRecord = $this->getLastSubmissionForUser($target_user, $isSecretRoom);
 
-
         foreach ($fields as $field) {
-            if ($field['html_type'] === 'file') {
+            $html_type = $field['html_type'] ?? null;
+            if ($html_type === 'file') {
                 if (!empty($_FILES[$field['name']]['tmp_name'])) {
                     // New upload
                     $uploaded_file = $this->handleFileUploadToDb($field['name']);
@@ -319,6 +331,7 @@ EDIT_FORM;
                 }
 
                 // Add field definitions
+                $unsetField[] = $field['name'];
                 $extraFields[] = ['name' => $field['name'] . "_filename"];
                 $extraFields[] = ['name' => $field['name'] . "_data"];
             }
@@ -327,6 +340,7 @@ EDIT_FORM;
         return [
             'data' => $fileData,
             'fields' => $extraFields,
+            'unset_fields' => $unsetField,
         ];
     }
 
