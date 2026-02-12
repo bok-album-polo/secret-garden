@@ -206,6 +206,15 @@ EDIT_FORM;
     protected function recordSubmission(array $fields, array $data, bool $isSecretRoom = false): void
     {
         try {
+            // Deduplicate fields by 'name' (last occurrence wins)
+            $uniqueFields = [];
+            foreach ($fields as $field) {
+                if (isset($field['name'])) {
+                    $uniqueFields[$field['name']] = $field;
+                }
+            }
+            $fields = array_values($uniqueFields);
+
             // Define expected types for each column (extend as needed)
             $fieldTypes = [
                 'user_agent_id' => 'int',
