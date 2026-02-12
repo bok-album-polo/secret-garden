@@ -67,15 +67,11 @@ class User
             $params['date_to'] = $filters['date_to'] . ' 23:59:59';
         }
 
-        // Default: only activated users
-        if (empty($filters['activated'])) {
+
+        if ($filters['activated'] === 'yes') {
             $whereClauses[] = "activated_at IS NOT NULL";
-        } else {
-            if ($filters['activated'] === 'yes') {
-                $whereClauses[] = "activated_at IS NOT NULL";
-            } elseif ($filters['activated'] === 'no') {
-                $whereClauses[] = "activated_at IS NULL";
-            }
+        } elseif ($filters['activated'] === 'no') {
+            $whereClauses[] = "activated_at IS NULL";
         }
 
         if (!empty($whereClauses)) {

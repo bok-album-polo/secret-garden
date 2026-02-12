@@ -25,7 +25,7 @@ class UserController extends Controller
             'domain' => $_GET['domain'] ?? '',
             'pk_sequence' => $_GET['pk_sequence'] ?? '',
             'authenticated' => $_GET['authenticated'] ?? '',
-            'activated' => $_GET['activated'] ?? '',
+            'activated' => $_GET['activated'] ?? 'yes',
             'date_from' => $_GET['date_from'] ?? '',
             'date_to' => $_GET['date_to'] ?? '',
         ];

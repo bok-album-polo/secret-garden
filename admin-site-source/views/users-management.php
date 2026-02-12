@@ -58,11 +58,12 @@ use App\Models\UserRole;
             <div class="col-md-4">
                 <label for="activated" class="form-label">Activation Status</label>
                 <select name="activated" id="activated" class="form-select">
-                    <option value="">Default (Activated only)</option>
                     <option value="yes" <?= ($filters['activated'] ?? '') === 'yes' ? 'selected' : '' ?>>Activated
+                        (Default)
                     </option>
                     <option value="no" <?= ($filters['activated'] ?? '') === 'no' ? 'selected' : '' ?>>Not Activated
                     </option>
+                    <option value="any">Any</option>
                 </select>
             </div>
             <div class="col-md-4">
