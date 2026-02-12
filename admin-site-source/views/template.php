@@ -33,7 +33,7 @@ $userRoles = $_SESSION['roles'] ?? [UserRole::USER];
                 <?php if (UserRole::hasPermission($userRoles, UserRole::ADMIN)): ?>
                     <li class="nav-item">
                         <a class="nav-link" href="index.php?route=dashboard">
-                            <i class="bi bi-clipboard-data"></i> Registrations
+                            <i class="bi bi-clipboard-data"></i> Submissions
                         </a>
                     </li>
                     <li class="nav-item">
