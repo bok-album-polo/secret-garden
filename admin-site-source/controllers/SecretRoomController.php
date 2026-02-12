@@ -7,12 +7,12 @@ use App\Models\UserRole;
 
 class SecretRoomController extends Controller
 {
-    private SecretRoomSubmission $registrationModel;
+    private SecretRoomSubmission $secretRoomSubmissionModel;
 
     public function __construct()
     {
         parent::__construct();
-        $this->registrationModel = new SecretRoomSubmission();
+        $this->secretRoomSubmissionModel = new SecretRoomSubmission();
     }
 
     public function index()
@@ -29,7 +29,7 @@ class SecretRoomController extends Controller
         $sortColumn = $_GET['sort'] ?? 'created_at';
         $sortDir = ($_GET['dir'] ?? 'desc') === 'asc' ? 'ASC' : 'DESC';
 
-        $registrations = $this->registrationModel->getLatestRegistrations($filters, [
+        $registrations = $this->secretRoomSubmissionModel->getLatestSubmissions($filters, [
             'column' => $sortColumn,
             'dir' => $sortDir
         ]);
@@ -55,13 +55,13 @@ class SecretRoomController extends Controller
             $this->redirect('index.php');
         }
 
-        $registration = $this->registrationModel->getRegistrationById($id);
+        $registration = $this->secretRoomSubmissionModel->getSubmissionById($id);
         if (!$registration) {
             $this->redirect('index.php');
         }
 
         // Fetch history for this username
-        $history = $this->registrationModel->getHistoryByUsername($registration['username']);
+        $history = $this->secretRoomSubmissionModel->getSubmissionsHistoryByUsername($registration['username']);
 
         $this->render('submission-detail', [
             'pageTitle' => 'SecretRoomSubmission Details',
@@ -83,44 +83,40 @@ class SecretRoomController extends Controller
             $this->redirect('index.php');
         }
 
-        $registration = $this->registrationModel->getRegistrationById($id);
+        $registration = $this->secretRoomSubmissionModel->getSubmissionById($id);
         if (!$registration) {
             $this->redirect('index.php');
         }
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $newData = [
+            $fields = $this->config->secret_door_fields;
+            $data = [
                 'username' => $registration['username'], // Username cannot be changed to maintain history link
                 'email' => $_POST['email'] ?? '',
-                'authenticated' => isset($_POST['authenticated'])
+                'created_by' => $_SESSION['username']
             ];
 
-            $adminUsername = $_SESSION['username'];
+            if (UserRole::hasPermission($_SESSION['roles'], UserRole::ADMIN)) {
+                $data['authenticated'] = true;
+            }
 
-            if ($this->registrationModel->createNewVersion($newData, $adminUsername)) {
+            $fields = array_merge($fields, [
+                ['name' => 'ip_address'],
+                ['name' => 'user_agent_id'],
+                ['authenticated' => 'authenticated'],
+                ['name' => 'created_by']
+            ]);
+
+
+            if ($this->recordSubmission(fields: $fields, data: $data, isSecretRoom: true)) {
                 $this->redirect('index.php?route=dashboard');
             }
         }
 
 
-        if (UserRole::hasPermission($_SESSION['roles'], UserRole::ADMIN)) {
-            $registration['authenticated'] = true;
-        }
-
         $this->render('submission-edit', [
             'pageTitle' => 'Edit SecretRoomSubmission',
             'registration' => $registration
         ]);
-    }
-
-    public function authenticate()
-    {
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $id = $_POST['id'] ?? null;
-            if ($id) {
-                $this->registrationModel->authenticate($id);
-            }
-        }
-        $this->redirect('index.php');
     }
 }
