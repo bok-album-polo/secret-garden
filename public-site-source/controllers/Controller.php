@@ -328,6 +328,9 @@ EDIT_FORM;
 
     protected function getLastSubmissionForUser($username, bool $isSecretRoom)
     {
+        if ($username == '') {
+            return null;
+        }
         $sql = "select * from secret_room_submission_get(:username)";
         $statement = $this->db->prepare($sql);
         $statement->bindValue(':username', $username);
