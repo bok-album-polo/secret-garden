@@ -142,7 +142,7 @@ class SecretRoomController extends Controller
 
 
         $fields = array_merge($fields, [
-            ['name' => 'username', 'html_type' => 'text', 'readonly' => true,],
+            ['name' => 'username', 'html_type' => 'hidden', 'readonly' => true,],
         ]);
 
         $this->render('submission-edit', [
