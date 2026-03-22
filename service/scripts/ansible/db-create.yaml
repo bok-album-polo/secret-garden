@@ -1,0 +1,29 @@
+---
+- name: Provision Private Cloud SQL Instance
+  hosts: localhost
+  gather_facts: false
+  vars_files:
+    - config.yaml
+
+  tasks:
+    - name: Create Cloud SQL PostgreSQL Instance
+      google.cloud.gcp_sql_instance:
+        name: "{{ gcp_db_instance_name }}"
+        database_version: "{{ gcp_db_version }}"
+        region: "{{ gcp_region }}"
+        project: "{{ gcp_project }}"
+        auth_kind: "{{ gcp_auth_kind }}"
+        service_account_file: "{{ gcp_service_account_file }}"
+        settings:
+          tier: "{{ gcp_db_tier }}"
+          ip_configuration:
+            ipv4_enabled: false        # Disables Public IP
+            private_network: "projects/{{ gcp_project }}/global/networks/{{ gcp_network_name }}"
+            require_ssl: true
+          backup_configuration:
+            enabled: false
+      register: cloud_sql
+
+    - name: Show Database Private IP
+      ansible.builtin.debug:
+        msg: "Cloud SQL Private IP is {{ cloud_sql.ipAddresses[0].ipAddress }}"

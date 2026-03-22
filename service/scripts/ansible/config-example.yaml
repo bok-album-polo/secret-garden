@@ -1,0 +1,29 @@
+# GCP Authentication and Network Variables
+gcp_auth_kind: serviceaccount
+gcp_service_account_file: auth.json
+gcp_project: project-00000000-0000-0000-000
+gcp_region: us-central1
+gcp_zone: us-central1-a
+gcp_subnet_name: "default"
+gcp_network_name: "default"
+gcp_internal_cidr: 10.128.0.0/20
+
+# Abstracted GCP Instance Variables
+webserver_machine_type: e2-medium
+gcp_source_image: projects/ubuntu-os-cloud/global/images/family/ubuntu-2404-lts-amd64
+
+# Cloud SQL Variables
+gcp_db_instance_name: "secret-garden-db"
+gcp_db_tier: "db-perf-optimized-N-2"
+gcp_db_version: "POSTGRES_18"
+
+# Secret Garden Variables
+secret_garden_config_file: "init.yaml"
+
+# Cloud SQL Connection Variables
+# These are used by Ansible's community.postgresql modules
+gcp_db_ip: ""
+gcp_db_name: "secret_garden"
+gcp_db_user: "postgres"
+gcp_db_pass: "your-super-secure-password" # Consider using Ansible Vault for this!
+gcp_db_port: 5432

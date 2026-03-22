@@ -1,0 +1,85 @@
+---
+- name: Provision Google Cloud DNS Zones and A Records
+  hosts: localhost
+  gather_facts: false
+
+  # Load the core variables (GCP credentials, project info, etc.)
+  vars_files:
+    - config.yaml
+
+  tasks:
+    - name: Load Secret Garden configuration
+      ansible.builtin.include_vars:
+        file: "{{ secret_garden_config_file }}"
+        name: secret_garden
+
+    # --- Phase 1: Dynamic Data Retrieval ---
+    - name: Fetch instance details to extract dynamic Public IPs
+      google.cloud.gcp_compute_instance_info:
+        zone: "{{ gcp_zone }}"
+        project: "{{ gcp_project }}"
+        auth_kind: "{{ gcp_auth_kind }}"
+        service_account_file: "{{ gcp_service_account_file }}"
+        filters:
+          - name = "public-web-{{ '%02d' | format(idx + 1) }}"
+      loop: "{{ secret_garden.public_sites }}"
+      loop_control:
+        index_var: idx
+        label: "Fetching IP for public-web-{{ '%02d' | format(idx + 1) }}"
+      register: instance_facts
+
+    # --- Phase 2: DNS Zone Creation ---
+    - name: Create Cloud DNS Managed Zone for each domain
+      google.cloud.gcp_dns_managed_zone:
+        # GCP requires zone names to be lowercase with hyphens, no dots
+        name: "{{ item.domain | replace('.', '-') }}-zone"
+        # GCP requires a trailing dot for the actual DNS name
+        dns_name: "{{ item.domain }}."
+        description: "Automated zone for {{ item.domain }}"
+        project: "{{ gcp_project }}"
+        auth_kind: "{{ gcp_auth_kind }}"
+        service_account_file: "{{ gcp_service_account_file }}"
+        state: present
+      loop: "{{ secret_garden.public_sites }}"
+      loop_control:
+        label: "{{ item.domain }}"
+
+    # --- Phase 3: Record Set Creation ---
+    - name: Create naked domain A record (@)
+      google.cloud.gcp_dns_resource_record_set:
+        name: "{{ item.domain }}."
+        managed_zone:
+          name: "{{ item.domain | replace('.', '-') }}-zone"
+          dnsName: "{{ item.domain }}." # Required camelCase key
+        type: A
+        ttl: 300
+        # Map the current loop index back to the instance facts we fetched earlier
+        target:
+          - "{{ instance_facts.results[idx].resources[0].networkInterfaces[0].accessConfigs[0].natIP }}"
+        project: "{{ gcp_project }}"
+        auth_kind: "{{ gcp_auth_kind }}"
+        service_account_file: "{{ gcp_service_account_file }}"
+        state: present
+      loop: "{{ secret_garden.public_sites }}"
+      loop_control:
+        index_var: idx
+        label: "{{ item.domain }} -> public-web-{{ '%02d' | format(idx + 1) }}"
+
+    - name: Create www A record
+      google.cloud.gcp_dns_resource_record_set:
+        name: "www.{{ item.domain }}."
+        managed_zone:
+          name: "{{ item.domain | replace('.', '-') }}-zone"
+          dnsName: "{{ item.domain }}." # Required camelCase key
+        type: A
+        ttl: 300
+        target:
+          - "{{ instance_facts.results[idx].resources[0].networkInterfaces[0].accessConfigs[0].natIP }}"
+        project: "{{ gcp_project }}"
+        auth_kind: "{{ gcp_auth_kind }}"
+        service_account_file: "{{ gcp_service_account_file }}"
+        state: present
+      loop: "{{ secret_garden.public_sites }}"
+      loop_control:
+        index_var: idx
+        label: "www.{{ item.domain }} -> public-web-{{ '%02d' | format(idx + 1) }}"

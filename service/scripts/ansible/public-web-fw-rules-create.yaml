@@ -1,0 +1,53 @@
+---
+- name: Hardened public-web Configuration (Clean Naming)
+  hosts: localhost
+  gather_facts: false
+
+  vars_files:
+    - config.yaml
+
+  module_defaults:
+    group/gcp:
+      auth_kind: "{{ gcp_auth_kind }}"
+      service_account_file: "{{ gcp_service_account_file }}"
+      project: "{{ gcp_project }}"
+
+  tasks:
+    - name: Priority 900 - Allow Internal SSH
+      google.cloud.gcp_compute_firewall:
+        name: sg-allow-internal-ssh-to-public-web
+        network: { name: "default" }
+        direction: INGRESS
+        priority: 900
+        target_tags: ["public-web"]
+        source_ranges:
+          - "{{ gcp_internal_cidr }}"
+        allowed:
+          - ip_protocol: tcp
+            ports: ['22']
+        state: present
+
+    - name: Priority 1000 - Allow Public Web Traffic
+      google.cloud.gcp_compute_firewall:
+        name: sg-allow-public-web-to-public-web
+        network: { name: "default" }
+        direction: INGRESS
+        priority: 1000
+        target_tags: ["public-web"]
+        source_ranges: ['0.0.0.0/0']
+        allowed:
+          - ip_protocol: tcp
+            ports: ['80', '443']
+        state: present
+
+    - name: Priority 2000 - Deny All Other Traffic
+      google.cloud.gcp_compute_firewall:
+        name: sg-deny-all-else-to-public-web
+        network: { name: "default" }
+        direction: INGRESS
+        priority: 2000
+        target_tags: ["public-web"]
+        source_ranges: ['0.0.0.0/0']
+        denied:
+          - ip_protocol: all
+        state: present

@@ -12,3 +12,5 @@ pyproject.toml
 uv.lock
 .venv
 base-usernames.csv
+auth.json
+config.yaml

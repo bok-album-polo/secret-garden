@@ -1,0 +1,21 @@
+---
+- name: Jumphost setup
+  hosts: localhost
+  connection: local
+
+  tasks:
+    - name: Update apt cache (Debian/Ubuntu only)
+      become: true  # Sudo required for system updates
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      when: ansible_os_family == "Debian"
+
+    - name: Install packages
+      become: true  # Sudo required for installing packages
+      package:
+        name:
+          - git
+          - whois
+          - python3-psycopg2
+        state: present

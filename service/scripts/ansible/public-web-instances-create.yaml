@@ -1,0 +1,52 @@
+---
+- name: Provision Public Web Instances for Secret Garden
+  hosts: localhost
+  gather_facts: false
+
+  vars_files:
+    - config.yaml
+
+  tasks:
+    - name: Load Secret Garden configuration
+      ansible.builtin.include_vars:
+        file: "{{ secret_garden_config_file }}"
+        name: secret_garden
+
+    - name: Provision webserver instances (public-web-xx)
+      google.cloud.gcp_compute_instance:
+        # Updated naming convention: public-web-01, public-web-02
+        name: "public-web-{{ '%02d' | format(idx + 1) }}"
+        machine_type: "{{ webserver_machine_type }}"
+        zone: "{{ gcp_zone }}"
+        project: "{{ gcp_project }}"
+        auth_kind: "{{ gcp_auth_kind }}"
+        service_account_file: "{{ gcp_service_account_file }}"
+        
+        # Updated tag to match the new naming scheme
+        tags:
+          items:
+            - "public-web"
+        
+        disks:
+          - auto_delete: true
+            boot: true
+            initialize_params:
+              source_image: "{{ gcp_source_image }}"
+              
+        network_interfaces:
+          - network: null
+            access_configs:
+              - name: "External NAT"
+                type: "ONE_TO_ONE_NAT"
+                
+      loop: "{{ secret_garden.public_sites }}"
+      loop_control:
+        index_var: idx
+        label: "public-web-{{ '%02d' | format(idx + 1) }} ({{ item.domain }})"
+      register: provisioned_webservers
+
+    - name: Display public IPs of new instances
+      ansible.builtin.debug:
+        msg: "Instance {{ item.name }} is active at {{ item.networkInterfaces[0].accessConfigs[0].natIP }}"
+      loop: "{{ provisioned_webservers.results }}"
+      when: item.networkInterfaces is defined

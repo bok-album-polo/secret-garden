@@ -1,0 +1,32 @@
+---
+- name: Initialize Secret Garden Database
+  hosts: localhost
+  gather_facts: false
+  vars_files:
+    - config.yaml
+
+  tasks:
+    - name: Create the PostgreSQL database
+      community.postgresql.postgresql_db:
+        name: "{{ gcp_db_name }}"
+        login_host: "{{ gcp_db_ip }}"
+        login_user: "{{ gcp_db_user }}"
+        login_password: "{{ gcp_db_pass }}"
+        port: "{{ gcp_db_port }}"
+        ssl_mode: "require"
+        state: present
+
+    - name: Run 02_tables.sql against the database
+      community.postgresql.postgresql_query:
+        db: "{{ gcp_db_name }}"
+        login_host: "{{ gcp_db_ip }}"
+        login_user: "{{ gcp_db_user }}"
+        login_password: "{{ gcp_db_pass }}"
+        port: "{{ gcp_db_port }}"
+        ssl_mode: "require"
+        path_to_script: "02_tables.sql"
+      register: script_result
+
+    - name: Show script execution status
+      ansible.builtin.debug:
+        var: script_result.query_list

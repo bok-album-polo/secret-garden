@@ -1,0 +1,62 @@
+---
+# Play 1: Build the in-memory inventory dynamically
+- name: Generate Dynamic Inventory from Configuration
+  hosts: localhost
+  gather_facts: false
+  
+  vars_files:
+    - config.yaml
+
+  tasks:
+    - name: Load Secret Garden configuration
+      ansible.builtin.include_vars:
+        file: "{{ secret_garden_config_file }}"
+        name: secret_garden
+
+    - name: Add generated hostnames to in-memory group
+      ansible.builtin.add_host:
+        name: "public-web-{{ '%02d' | format(idx + 1) }}"
+        groups: dynamic_webservers
+      loop: "{{ secret_garden.public_sites }}"
+      loop_control:
+        index_var: idx
+        label: "public-web-{{ '%02d' | format(idx + 1) }}"
+
+# Play 2: Patch OS and Install Web Stack Software
+- name: Update OS and Install Web Stack
+  hosts: dynamic_webservers
+  become: yes
+  gather_facts: yes
+
+  vars_files:
+    - config.yaml
+
+  tasks:
+    # --- Phase 1: OS Updates & Reboot ---
+    - name: Update apt cache and upgrade all packages
+      ansible.builtin.apt:
+        update_cache: yes
+        upgrade: dist
+        cache_valid_time: 3600
+
+    - name: Check if a reboot is required after updates
+      ansible.builtin.stat:
+        path: /var/run/reboot-required
+      register: reboot_required_file
+
+    - name: Reboot the server if required
+      ansible.builtin.reboot:
+        msg: "Ansible triggered reboot due to OS updates"
+        reboot_timeout: 300 # Wait up to 5 minutes for the server to return
+      when: reboot_required_file.stat.exists
+
+    # --- Phase 2: Software Installation ---
+    - name: Install Nginx, PHP, and Certbot
+      ansible.builtin.apt:
+        name:
+          - nginx
+          - php-fpm       # Automatically resolves to the latest default version
+          - php-common
+          - certbot
+          - python3-certbot-nginx
+        state: present
