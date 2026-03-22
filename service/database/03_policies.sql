@@ -1,3 +1,5 @@
+\set ECHO queries
+
 ALTER TABLE secret_door_submissions
 	ENABLE ROW LEVEL SECURITY
 ;

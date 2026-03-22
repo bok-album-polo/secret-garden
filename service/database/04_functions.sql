@@ -1,3 +1,5 @@
+\set ECHO queries
+
 CREATE OR REPLACE FUNCTION pk_get(
     p_sequence VARCHAR(20) -- Changed from INT to match table definition
 )

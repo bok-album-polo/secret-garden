@@ -1,3 +1,5 @@
+\set ECHO queries
+
 CREATE OR REPLACE FUNCTION debug_clear_auth_tables()
 RETURNS void
 LANGUAGE plpgsql
